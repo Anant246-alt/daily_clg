@@ -146,8 +146,12 @@ const PORT = process.env.PORT || 5000;
 // Connect DB & Start Express Server
 connectDB().then(async () => {
   await seedDatabase();
-  app.listen(PORT, () => {
-    console.log(`[Express Backend] Server running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`);
-    console.log(`[Swagger UI] Documentation available at http://localhost:${PORT}/api-docs`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, () => {
+      console.log(`[Express Backend] Server running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`);
+      console.log(`[Swagger UI] Documentation available at http://localhost:${PORT}/api-docs`);
+    });
+  }
 });
+
+export default app;
