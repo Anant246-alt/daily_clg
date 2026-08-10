@@ -29,8 +29,15 @@ import supportRoutes from "./backend/routes/supportRoutes.js";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let __dirname = process.cwd();
+try {
+  if (import.meta && import.meta.url) {
+    const __filename = fileURLToPath(import.meta.url);
+    __dirname = path.dirname(__filename);
+  }
+} catch (err) {
+  __dirname = process.cwd();
+}
 
 const app = express();
 
