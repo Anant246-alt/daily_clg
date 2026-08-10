@@ -70,8 +70,8 @@ const authLimiter = rateLimit({
 app.use("/api/auth/send-otp", authLimiter);
 app.use("/api/auth/verify-otp", authLimiter);
 
-// Root Welcome Landing Page
-app.get("/", (req, res) => {
+// Root API Info Page
+app.get("/api", (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -115,10 +115,13 @@ app.get("/api/health", (req, res) => {
 
 // Swagger Documentation
 try {
-  const swaggerDocument = JSON.parse(fs.readFileSync(path.join(__dirname, "swagger.json"), "utf8"));
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  const swaggerPath = path.join(process.cwd(), "swagger.json");
+  if (fs.existsSync(swaggerPath)) {
+    const swaggerDocument = JSON.parse(fs.readFileSync(swaggerPath, "utf8"));
+    app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  }
 } catch (err) {
-  console.warn("[Swagger Warning] Could not load swagger.json file:", err.message);
+  console.warn("[Swagger Notice] Could not load swagger.json file:", err.message);
 }
 
 // Mount REST API Routes

@@ -3,17 +3,20 @@ import path from "path";
 
 const dbDir = path.join(process.cwd(), "backend", "data", "db");
 
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
+try {
+  if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn("[FileDB Notice] Local disk write restricted in serverless environment:", err.message);
 }
 
 export const readCollection = (collectionName, defaultData = []) => {
   const filePath = path.join(dbDir, `${collectionName}.json`);
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify(defaultData, null, 2));
-    return defaultData;
-  }
   try {
+    if (!fs.existsSync(filePath)) {
+      return defaultData;
+    }
     const data = fs.readFileSync(filePath, "utf-8");
     return JSON.parse(data || "[]");
   } catch (err) {
@@ -22,8 +25,12 @@ export const readCollection = (collectionName, defaultData = []) => {
 };
 
 export const writeCollection = (collectionName, data) => {
-  const filePath = path.join(dbDir, `${collectionName}.json`);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  try {
+    const filePath = path.join(dbDir, `${collectionName}.json`);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.warn(`[FileDB Notice] Write skipped in read-only environment: ${err.message}`);
+  }
 };
 
 export const insertDocument = (collectionName, doc) => {
