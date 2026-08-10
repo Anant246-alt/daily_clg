@@ -15,9 +15,6 @@ const categories = [
   { id: "c4", name: "Footlong", slug: "footlong", emoji: "🌭", items: 9 },
   { id: "c5", name: "Yogurt Bowl", slug: "yogurt-bowl", emoji: "🍨", items: 11 },
   { id: "c6", name: "Combos", slug: "combos", emoji: "🍱", items: 15 },
-  { id: "c7", name: "Protein Meals", slug: "protein-meals", emoji: "🍗", items: 14 },
-  { id: "c8", name: "Breakfast", slug: "breakfast", emoji: "🥐", items: 16 },
-  { id: "c9", name: "Healthy Snacks", slug: "healthy-snacks", emoji: "🥜", items: 20 },
 ];
 
 const products = [
@@ -46,7 +43,7 @@ const products = [
   },
   {
     id: "p2",
-    name: "Grilled Chicken Sandwich",
+    name: "Grilled Paneer & Herb Sandwich",
     category: "sandwiches",
     image: "/assets/sandwich.jpg",
     gallery: ["/assets/sandwich.jpg", "/assets/footlong.jpg", "/assets/salad.jpg"],
@@ -54,17 +51,17 @@ const products = [
     mrp: 349,
     rating: 4.7,
     reviews: 431,
-    veg: false,
+    veg: true,
     bestSeller: true,
     popular: true,
     description:
-      "Flame grilled chicken breast, garden herbs and peppers layered in a toasted sourdough with smoky aioli.",
-    ingredients: ["Chicken breast", "Sourdough", "Bell peppers", "Parsley", "Smoky aioli"],
+      "Herbed paneer slabs, roasted bell peppers and fresh basil layered in toasted sourdough with garlic aioli.",
+    ingredients: ["Paneer", "Sourdough", "Bell peppers", "Basil", "Garlic aioli"],
     nutrition: [
-      { label: "Calories", value: "480 kcal" },
-      { label: "Protein", value: "34 g" },
+      { label: "Calories", value: "440 kcal" },
+      { label: "Protein", value: "24 g" },
       { label: "Carbs", value: "41 g" },
-      { label: "Fat", value: "17 g" },
+      { label: "Fat", value: "19 g" },
     ],
   },
   {
@@ -138,25 +135,25 @@ const products = [
   },
   {
     id: "p6",
-    name: "Power Protein Combo",
+    name: "Veggie Delight Combo",
     category: "combos",
     image: "/assets/sandwich.jpg",
     gallery: ["/assets/sandwich.jpg", "/assets/salad.jpg", "/assets/icedtea.jpg"],
-    price: 429,
-    mrp: 569,
+    price: 399,
+    mrp: 499,
     rating: 4.7,
     reviews: 141,
-    veg: false,
+    veg: true,
     bestSeller: true,
     popular: true,
     description:
-      "Grilled chicken sandwich, a side salad and an iced tea. Everything you need for a full reset meal.",
-    ingredients: ["Chicken sandwich", "Side salad", "Iced tea"],
+      "Grilled Paneer sandwich, a garden side salad and an iced tea. 100% vegetarian energy meal.",
+    ingredients: ["Paneer sandwich", "Side salad", "Iced tea"],
     nutrition: [
-      { label: "Calories", value: "780 kcal" },
-      { label: "Protein", value: "45 g" },
+      { label: "Calories", value: "680 kcal" },
+      { label: "Protein", value: "28 g" },
       { label: "Carbs", value: "72 g" },
-      { label: "Fat", value: "26 g" },
+      { label: "Fat", value: "22 g" },
     ],
   },
 ];
@@ -186,8 +183,8 @@ const reviews = [
     initials: "RN",
     rating: 5,
     date: "05 Jul 2026",
-    text: "Ordering breakfast every weekday now. Delivery is always ahead of the estimate.",
-    productId: "p8",
+    text: "Ordering fresh paneer sub every weekday now. Delivery is always ahead of the estimate.",
+    productId: "p2",
   },
   {
     id: "r4",
@@ -246,11 +243,11 @@ const banners = [
   },
   {
     id: "b3",
-    title: "Protein packed lunch",
-    subtitle: "High protein combos under ₹399",
+    title: "Veggie packed lunch",
+    subtitle: "Delicious vegetarian combos under ₹399",
     cta: "Explore combos",
     image: "/assets/sandwich.jpg",
-    code: "PROTEIN20",
+    code: "DAILY20",
   },
 ];
 
@@ -263,19 +260,30 @@ const offers = [
 export const seedDatabase = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI;
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 4000 });
+
+    if (!mongoUri) {
+      console.warn("[Seeder Warning] MONGODB_URI is missing");
+      return;
     }
 
-    console.log("[Seeder] Clearing old collections...");
-    await Category.deleteMany({});
-    await Product.deleteMany({});
-    await Review.deleteMany({});
-    await Notification.deleteMany({});
-    await Banner.deleteMany({});
-    await Offer.deleteMany({});
+    // Connect only if not already connected
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 4000
+      });
+    }
 
-    console.log("[Seeder] Inserting fresh data...");
+    // Check whether data already exists
+    const categoryCount = await Category.countDocuments();
+    const productCount = await Product.countDocuments();
+
+    if (categoryCount > 0 || productCount > 0) {
+      console.log("[Seeder] Existing data found. Skipping database seeding.");
+      return;
+    }
+
+    console.log("[Seeder] Database is empty. Inserting initial data...");
+
     await Category.insertMany(categories);
     await Product.insertMany(products);
     await Review.insertMany(reviews);
@@ -285,7 +293,9 @@ export const seedDatabase = async () => {
 
     console.log("[Seeder] Database seeded successfully!");
   } catch (error) {
-    console.warn(`[Seeder Warning] Database seeding skipped or offline: ${error.message}`);
+    console.warn(
+      `[Seeder Warning] Database seeding skipped or offline: ${error.message}`
+    );
   }
 };
 

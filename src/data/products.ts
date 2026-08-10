@@ -3,7 +3,7 @@ import sandwich from "@/assets/sandwich.jpg";
 import icedtea from "@/assets/icedtea.jpg";
 import footlong from "@/assets/footlong.jpg";
 
-/** Dummy catalogue — replace with GET /api/products later. */
+/** Pure Vegetarian Catalogue */
 export type Product = {
   id: string;
   name: string;
@@ -50,7 +50,7 @@ export const products: Product[] = [
   },
   {
     id: "p2",
-    name: "Grilled Chicken Sandwich",
+    name: "Grilled Paneer & Herb Sandwich",
     category: "sandwiches",
     image: sandwich,
     gallery: [sandwich, footlong, salad],
@@ -58,13 +58,13 @@ export const products: Product[] = [
     mrp: 349,
     rating: 4.7,
     reviews: 431,
-    veg: false,
+    veg: true,
     bestSeller: true,
     popular: true,
     description:
-      "Flame grilled chicken breast, garden herbs and peppers layered in a toasted sourdough with smoky aioli.",
-    ingredients: ["Chicken breast", "Sourdough", "Bell peppers", "Parsley", "Smoky aioli"],
-    nutrition: nutrition(480, 34, 41, 17),
+      "Herbed paneer slabs, roasted bell peppers and fresh basil layered in toasted sourdough with garlic aioli.",
+    ingredients: ["Paneer", "Sourdough", "Bell peppers", "Basil", "Garlic aioli"],
+    nutrition: nutrition(440, 24, 41, 19),
   },
   {
     id: "p3",
@@ -122,75 +122,21 @@ export const products: Product[] = [
   },
   {
     id: "p6",
-    name: "Power Protein Combo",
+    name: "Veggie Delight Combo",
     category: "combos",
     image: sandwich,
     gallery: [sandwich, salad, icedtea],
-    price: 429,
-    mrp: 569,
+    price: 399,
+    mrp: 499,
     rating: 4.7,
     reviews: 141,
-    veg: false,
+    veg: true,
     bestSeller: true,
     popular: true,
     description:
-      "Grilled chicken sandwich, a side salad and an iced tea. Everything you need for a full reset meal.",
-    ingredients: ["Chicken sandwich", "Side salad", "Iced tea"],
-    nutrition: nutrition(780, 45, 72, 26),
-  },
-  {
-    id: "p7",
-    name: "Quinoa Protein Bowl",
-    category: "protein-meals",
-    image: salad,
-    gallery: [salad, footlong, sandwich],
-    price: 319,
-    mrp: 399,
-    rating: 4.6,
-    reviews: 122,
-    veg: true,
-    bestSeller: false,
-    popular: true,
-    description:
-      "Warm quinoa, roasted chickpeas, grilled veggies and tahini dressing. 30g plant protein in every bowl.",
-    ingredients: ["Quinoa", "Chickpeas", "Zucchini", "Tahini", "Pumpkin seeds"],
-    nutrition: nutrition(540, 30, 61, 16),
-  },
-  {
-    id: "p8",
-    name: "Sunrise Breakfast Sub",
-    category: "breakfast",
-    image: footlong,
-    gallery: [footlong, sandwich, icedtea],
-    price: 229,
-    mrp: 289,
-    rating: 4.4,
-    reviews: 87,
-    veg: false,
-    bestSeller: false,
-    popular: false,
-    description:
-      "Scrambled eggs, turkey rashers and melted cheddar in a warm sub. The classic morning starter.",
-    ingredients: ["Egg", "Turkey rashers", "Cheddar", "Sub bread", "Chives"],
-    nutrition: nutrition(510, 27, 44, 22),
-  },
-  {
-    id: "p9",
-    name: "Roasted Nut Mix",
-    category: "healthy-snacks",
-    image: salad,
-    gallery: [salad, icedtea, footlong],
-    price: 149,
-    mrp: 199,
-    rating: 4.3,
-    reviews: 64,
-    veg: true,
-    bestSeller: false,
-    popular: false,
-    description:
-      "Slow roasted almonds, cashews and pistachios with a pinch of Himalayan salt. Zero oil, zero guilt.",
-    ingredients: ["Almonds", "Cashews", "Pistachios", "Himalayan salt"],
-    nutrition: nutrition(210, 8, 9, 17),
+      "Grilled Paneer sandwich, a garden side salad and an iced tea. 100% vegetarian energy meal.",
+    ingredients: ["Paneer sandwich", "Side salad", "Iced tea"],
+    nutrition: nutrition(680, 28, 72, 22),
   },
   {
     id: "p10",

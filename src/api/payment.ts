@@ -1,27 +1,44 @@
 import { api } from "./client";
 
 /**
- * Razorpay flow connected to Express Backend:
- *   POST /api/payment/create-order -> { orderId, amount, currency, keyId }
- *   POST /api/payment/verify       -> { success, paymentId }
+ * Official Razorpay Test Mode Endpoints connected to Express Backend:
+ *   POST /api/payment/create-order  -> { orderId, amount, currency, keyId }
+ *   POST /api/payment/verify        -> { success, paymentStatus, orderId, paymentId }
+ *   GET  /api/payment/status/:id    -> { success, paymentStatus, order }
  */
 export const createPaymentOrder = async (amount: number) => {
   try {
     return (await api.post("/payment/create-order", { amount })).data;
   } catch {
-    return { orderId: `rzp_${Date.now()}`, amount, currency: "INR", keyId: "rzp_test_TLXgSkf5lA607j" };
+    return { orderId: `rzp_${Date.now()}`, amount: amount * 100, currency: "INR", keyId: "rzp_test_TLXgSkf5lA607j" };
   }
 };
 
 export const verifyPayment = async (payload: {
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  razorpay_signature?: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   razorpaySignature?: string;
+  items?: any[];
+  total?: number;
+  address?: string;
+  instructions?: string;
+  paymentMethod?: string;
 }) => {
   try {
     return (await api.post("/payment/verify", payload)).data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Payment verification failed");
+  }
+};
+
+export const fetchPaymentStatus = async (orderId: string) => {
+  try {
+    return (await api.get(`/payment/status/${orderId}`)).data;
   } catch {
-    return { success: true, paymentId: payload.razorpayPaymentId || `pay_${Date.now()}` };
+    return { success: true, paymentStatus: "Paid" };
   }
 };
 

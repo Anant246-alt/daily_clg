@@ -83,29 +83,24 @@ function CheckoutPage() {
             description: "Order Payment",
             handler: async function (response: any) {
               try {
-                await verifyPayment({
-                  razorpayOrderId: response.razorpay_order_id || orderData?.orderId || `order_${Date.now()}`,
-                  razorpayPaymentId: response.razorpay_payment_id || `pay_test_${Date.now()}`,
-                  razorpaySignature: response.razorpay_signature || "verified_signature",
-                });
-                const res = await placeOrder({
+                const verifyRes = await verifyPayment({
+                  razorpay_order_id: response.razorpay_order_id || orderData?.orderId || `order_${Date.now()}`,
+                  razorpay_payment_id: response.razorpay_payment_id || `pay_test_${Date.now()}`,
+                  razorpay_signature: response.razorpay_signature || "verified_signature",
                   items: cart.items,
-                  method: "razorpay",
-                  instructions,
                   total: cart.total,
                   address: addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows",
-                  razorpayOrderId: response.razorpay_order_id || orderData?.orderId,
-                  razorpayPaymentId: response.razorpay_payment_id || `pay_test_${Date.now()}`,
-                  razorpaySignature: response.razorpay_signature || "verified_signature",
+                  instructions,
+                  paymentMethod: "Razorpay Test Mode",
                 });
-                setLastOrder({ number: res.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
+                setLastOrder({ number: verifyRes.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
                 cart.clearCart();
                 setLoading(false);
                 toast.success("Payment verified & Order placed!");
                 void navigate({ to: "/order-success" });
               } catch (err: any) {
                 setLoading(false);
-                toast.error("Payment verification failed");
+                toast.error(err.message || "Payment verification failed");
               }
             },
             prefill: {

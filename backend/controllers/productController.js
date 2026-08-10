@@ -1,6 +1,6 @@
 import { Product } from "../models/Product.js";
 
-// Fallback items if DB is not populated yet
+// 100% Pure Vegetarian fallback items
 const fallbackProducts = [
   {
     id: "p1",
@@ -26,7 +26,7 @@ const fallbackProducts = [
   },
   {
     id: "p2",
-    name: "Grilled Chicken Sandwich",
+    name: "Grilled Paneer & Herb Sandwich",
     category: "sandwiches",
     image: "/assets/sandwich.jpg",
     gallery: ["/assets/sandwich.jpg", "/assets/footlong.jpg", "/assets/salad.jpg"],
@@ -34,16 +34,16 @@ const fallbackProducts = [
     mrp: 349,
     rating: 4.7,
     reviews: 431,
-    veg: false,
+    veg: true,
     bestSeller: true,
     popular: true,
-    description: "Flame grilled chicken breast, garden herbs and peppers layered in a toasted sourdough with smoky aioli.",
-    ingredients: ["Chicken breast", "Sourdough", "Bell peppers", "Parsley", "Smoky aioli"],
+    description: "Herbed paneer slabs, roasted bell peppers and fresh basil layered in toasted sourdough with garlic aioli.",
+    ingredients: ["Paneer", "Sourdough", "Bell peppers", "Basil", "Garlic aioli"],
     nutrition: [
-      { label: "Calories", value: "480 kcal" },
-      { label: "Protein", value: "34 g" },
+      { label: "Calories", value: "440 kcal" },
+      { label: "Protein", value: "24 g" },
       { label: "Carbs", value: "41 g" },
-      { label: "Fat", value: "17 g" },
+      { label: "Fat", value: "19 g" },
     ],
   },
   {

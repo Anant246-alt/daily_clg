@@ -22,7 +22,7 @@ export const Route = createFileRoute("/search")({
 });
 
 const recent = ["Footlong", "Iced tea", "Protein bowl"];
-const popular = ["Salads", "Combos", "Breakfast", "Yogurt bowl", "Sandwich"];
+const popular = ["Salads", "Combos", "Footlong", "Yogurt bowl", "Sandwich"];
 const sorts = [
   { id: "popular", label: "Popular" },
   { id: "low", label: "Price: low to high" },

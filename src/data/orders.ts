@@ -43,7 +43,7 @@ export const orders: Order[] = [
     paymentMethod: "Card · **** 4291",
     address: "Flat 402, Green Meadows, Koramangala, Bengaluru 560034",
     items: [
-      { id: "p2", name: "Grilled Chicken Sandwich", qty: 1, price: 289 },
+      { id: "p2", name: "Grilled Paneer & Herb Sandwich", qty: 1, price: 289 },
       { id: "p1", name: "Avocado Garden Salad", qty: 1, price: 249 },
     ],
     timeline: [

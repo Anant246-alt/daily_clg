@@ -7,9 +7,6 @@ const fallbackCategories = [
   { id: "c4", name: "Footlong", slug: "footlong", emoji: "🌭", items: 9 },
   { id: "c5", name: "Yogurt Bowl", slug: "yogurt-bowl", emoji: "🍨", items: 11 },
   { id: "c6", name: "Combos", slug: "combos", emoji: "🍱", items: 15 },
-  { id: "c7", name: "Protein Meals", slug: "protein-meals", emoji: "🍗", items: 14 },
-  { id: "c8", name: "Breakfast", slug: "breakfast", emoji: "🥐", items: 16 },
-  { id: "c9", name: "Healthy Snacks", slug: "healthy-snacks", emoji: "🥜", items: 20 },
 ];
 
 export const getCategories = async (req, res, next) => {
