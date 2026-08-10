@@ -3,5 +3,7 @@ node_modules/
 .env.local
 .env.*.local
 dist/
+.output/
+.tanstack/
 backend/data/db/
 *.zip

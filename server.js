@@ -137,21 +137,29 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/support", supportRoutes);
 
+// Ensure DB connection on incoming requests
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+  } catch (err) {
+    console.warn("[DB Connection Warning]:", err.message);
+  }
+  next();
+});
+
 // Error Handling Middlewares
 app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-// Connect DB & Start Express Server
-connectDB().then(async () => {
-  await seedDatabase();
-  if (!process.env.VERCEL) {
+if (!process.env.VERCEL) {
+  connectDB().then(() => {
     app.listen(PORT, () => {
       console.log(`[Express Backend] Server running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`);
       console.log(`[Swagger UI] Documentation available at http://localhost:${PORT}/api-docs`);
     });
-  }
-});
+  });
+}
 
 export default app;

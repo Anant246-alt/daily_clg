@@ -2,6 +2,10 @@ import mongoose from "mongoose";
 import { seedDatabase } from "../utils/seeder.js";
 
 export const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
+
   try {
     const uri = process.env.MONGODB_URI;
     const isValidAtlasUri = uri && !uri.includes("<cluster-address>") && !uri.includes("<database_name>");
@@ -11,7 +15,9 @@ export const connectDB = async () => {
         serverSelectionTimeoutMS: 5000,
       });
       console.log(`[MongoDB Atlas] Connected to cloud database: ${conn.connection.host}`);
-      await seedDatabase();
+      if (process.env.SEED_DB === "true") {
+        await seedDatabase();
+      }
       return;
     }
   } catch (error) {
@@ -25,7 +31,6 @@ export const connectDB = async () => {
       serverSelectionTimeoutMS: 2000,
     });
     console.log(`[MongoDB Local] Connected to local database: ${conn.connection.host}`);
-    await seedDatabase();
   } catch (fallbackError) {
     console.log("[MongoDB Engine] Persistent File-Backed Database activated in backend/data/db/");
   }
