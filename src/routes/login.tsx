@@ -23,7 +23,7 @@ const emailValid = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 
 function LoginPage() {
   const navigate = useNavigate();
-  const { signIn } = useAuth();
+  const { signIn, isAuthenticated, hydrated } = useAuth();
   const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -31,6 +31,12 @@ function LoginPage() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [seconds, setSeconds] = useState(30);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
+
+  useEffect(() => {
+    if (hydrated && isAuthenticated) {
+      void navigate({ to: "/home" });
+    }
+  }, [hydrated, isAuthenticated, navigate]);
 
   useEffect(() => {
     if (step !== "otp" || seconds === 0) return;
