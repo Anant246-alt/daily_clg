@@ -164,12 +164,11 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 if (!process.env.VERCEL) {
-  connectDB().then(() => {
-    app.listen(PORT, () => {
-      console.log(`[Express Backend] Server running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`);
-      console.log(`[Swagger UI] Documentation available at http://localhost:${PORT}/api-docs`);
-    });
+  app.listen(PORT, () => {
+    console.log(`[Express Backend] Server running in ${process.env.NODE_ENV || "development"} mode on port ${PORT}`);
+    console.log(`[Swagger UI] Documentation available at http://localhost:${PORT}/api-docs`);
   });
+  connectDB();
 }
 
 export default app;
