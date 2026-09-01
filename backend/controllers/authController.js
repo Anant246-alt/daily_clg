@@ -22,13 +22,14 @@ export const sendOtp = async (req, res, next) => {
     // Ensure database connection
     await connectDB();
 
+    // Generate real dynamic random 6-digit OTP code
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
     try {
       await Otp.deleteMany({ email: email.toLowerCase() });
       await Otp.create({ email: email.toLowerCase(), otp: otpCode, expiresAt });
-      console.log(`[OTP Saved] OTP ${otpCode} stored for ${email}`);
+      console.log(`[OTP Saved] Dynamic OTP ${otpCode} stored for ${email}`);
     } catch (dbErr) {
       console.warn(`[Otp Warning] DB write failed: ${dbErr.message}`);
     }
@@ -41,14 +42,13 @@ export const sendOtp = async (req, res, next) => {
     });
 
     if (!emailResult.success) {
-      console.warn(`[Nodemailer Dispatch Failed]: ${emailResult.error}`);
+      console.warn(`[Nodemailer Dispatch Warning]: ${emailResult.error}`);
     }
 
     return res.status(200).json({
       success: true,
       email,
-      message: `OTP sent successfully to ${email}`,
-      otp: otpCode,
+      message: `Verification code sent to ${email}`,
     });
   } catch (error) {
     next(error);
