@@ -138,7 +138,6 @@ function CheckoutPage() {
           options.order_id = orderData.orderId;
         }
 
-        toast.info("Razorpay Test Mode: Type 1234 into the Enter OTP box and click Continue!", { duration: 10000 });
         const rzp = new (window as any).Razorpay(options);
         rzp.open();
         return;
