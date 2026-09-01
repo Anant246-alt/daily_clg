@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FiPlus, FiCreditCard, FiSmartphone, FiDollarSign, FiZap } from "react-icons/fi";
+import { FiPlus, FiCreditCard, FiSmartphone, FiDollarSign, FiZap, FiInfo } from "react-icons/fi";
 import { toast } from "sonner";
 import { AppShell } from "@/layouts/AppShell";
 import { PageTransition } from "@/components/PageTransition";
@@ -8,6 +8,7 @@ import { AddressCard } from "@/components/AddressCard";
 import { EmptyState, Spinner } from "@/components/States";
 import { useCart } from "@/context/CartContext";
 import { useOrders } from "@/context/OrderContext";
+import { useAuth } from "@/context/AuthContext";
 import { placeOrder } from "@/api/orders";
 import { createPaymentOrder, verifyPayment } from "@/api/payment";
 import { currency } from "@/utils/format";
@@ -48,6 +49,7 @@ const loadRazorpayScript = () => {
 function CheckoutPage() {
   const cart = useCart();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { addresses, selectedAddressId, selectAddress, setLastOrder } = useOrders();
   const [method, setMethod] = useState("razorpay");
   const [instructions, setInstructions] = useState("");
@@ -92,6 +94,7 @@ function CheckoutPage() {
                   address: addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows",
                   instructions,
                   paymentMethod: "Razorpay Test Mode",
+                  userEmail: user?.email || "dailyclgproject@gmail.com",
                 });
                 setLastOrder({ number: verifyRes.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
                 cart.clearCart();
@@ -104,9 +107,9 @@ function CheckoutPage() {
               }
             },
             prefill: {
-              name: "Aarav Mehta",
-              email: "dailyclgproject@gmail.com",
-              contact: "9876543210",
+              name: user?.name || "Aarav Mehta",
+              email: user?.email || "dailyclgproject@gmail.com",
+              contact: user?.phone?.replace(/\D/g, "") || "9876543210",
             },
             theme: { color: "#16a34a" },
             modal: {
@@ -202,6 +205,20 @@ function CheckoutPage() {
                   </button>
                 ))}
               </div>
+
+              {method !== "cod" && (
+                <div className="rounded-3xl border border-primary/30 bg-primary/5 p-4 text-xs text-foreground space-y-1">
+                  <div className="flex items-center gap-1.5 font-extrabold text-primary">
+                    <FiInfo className="size-4" /> Razorpay Test Mode Instructions:
+                  </div>
+                  <p className="text-muted-foreground">
+                    • <strong>Test Payment OTP Prompt:</strong> Enter any 4-digit or 6-digit code (e.g. <code className="font-bold text-foreground">1234</code> or <code className="font-bold text-foreground">123456</code>) into the Razorpay modal and click <strong>Continue</strong> to instantly complete the payment.
+                  </p>
+                  <p className="text-muted-foreground">
+                    • <strong>Test Cards / Netbanking:</strong> Click the green <strong>Success</strong> button inside the Razorpay modal screen.
+                  </p>
+                </div>
+              )}
             </section>
 
             <section className="space-y-2">
@@ -252,7 +269,7 @@ function CheckoutPage() {
             <button
               onClick={handlePlaceOrder}
               disabled={loading}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-70"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-[var(--shadow-soft)] disabled:opacity-70 cursor-pointer"
             >
               {loading && <Spinner className="border-primary-foreground/40 border-t-primary-foreground" />}
               Place order · {currency(cart.total)}
