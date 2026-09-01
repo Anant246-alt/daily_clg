@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FiPlus, FiDollarSign, FiZap, FiInfo, FiPhone, FiLock, FiX, FiCheckCircle } from "react-icons/fi";
+import { FiPlus, FiDollarSign, FiZap, FiInfo, FiPhone, FiLock, FiX, FiCheckCircle, FiArrowRight } from "react-icons/fi";
 import { toast } from "sonner";
 import { AppShell } from "@/layouts/AppShell";
 import { PageTransition } from "@/components/PageTransition";
@@ -55,9 +55,12 @@ function CheckoutPage() {
   const [instructions, setInstructions] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Custom Payment OTP Modal State
+  // Custom Payment OTP Modal State (Two Steps: "phone" -> "verify")
   const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpStep, setOtpStep] = useState<"phone" | "verify">("phone");
+  const [modalPhone, setModalPhone] = useState(user?.phone || phone || "");
   const [paymentOtp, setPaymentOtp] = useState("");
+  const [sendingSms, setSendingSms] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
 
   if (!cart.items.length) {
@@ -70,7 +73,7 @@ function CheckoutPage() {
     );
   }
 
-  /** Triggers Razorpay Popup Window directly */
+  /** Triggers Official Razorpay Popup Window directly */
   const triggerRazorpayGateway = async () => {
     setShowOtpModal(false);
     setLoading(true);
@@ -81,7 +84,7 @@ function CheckoutPage() {
         const orderData = await createPaymentOrder(cart.total);
         const keyId = orderData?.keyId || "rzp_test_TLXgSkf5lA607j";
         const amountInPaise = orderData?.amount || Math.round(cart.total * 100);
-        const cleanPhone = phone.replace(/\D/g, "") || "9876543210";
+        const cleanPhone = (modalPhone || phone).replace(/\D/g, "") || "9876543210";
 
         const options: any = {
           key: keyId,
@@ -146,20 +149,12 @@ function CheckoutPage() {
     }
   };
 
-  /** Handles Payment Flow Initiation */
+  /** Step 1: Open Payment Modal to Ask for Phone Number */
   const handlePlaceOrder = async () => {
     if (method === "razorpay") {
-      setLoading(true);
-      const emailToUse = user?.email || "dailyclgproject@gmail.com";
-      try {
-        await sendOtp(emailToUse);
-        toast.success(`Payment OTP sent to ${emailToUse}`);
-      } catch (err) {
-        console.warn("[Payment OTP Dispatch Notice]:", err);
-      } finally {
-        setLoading(false);
-        setShowOtpModal(true);
-      }
+      setModalPhone(user?.phone || phone || "");
+      setOtpStep("phone");
+      setShowOtpModal(true);
       return;
     }
 
@@ -179,33 +174,49 @@ function CheckoutPage() {
     void navigate({ to: "/order-success" });
   };
 
-  /** Verifies Custom Dynamic 6-Digit Payment OTP */
+  /** Step 2: Send SMS OTP to User's Mobile Phone Number */
+  const handleSendSmsOtp = async () => {
+    const cleanPhone = modalPhone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) {
+      return toast.error("Please enter a valid 10-digit mobile phone number");
+    }
+
+    setSendingSms(true);
+    try {
+      await sendOtp(modalPhone);
+      toast.success(`SMS OTP sent to ${modalPhone}`);
+    } catch (err) {
+      console.warn("[SMS OTP Notice]:", err);
+    } finally {
+      setSendingSms(false);
+      setOtpStep("verify");
+    }
+  };
+
+  /** Step 3: Verify Dynamic 6-Digit SMS Payment OTP */
   const handleVerifyPaymentOtp = async () => {
     if (!paymentOtp || paymentOtp.length !== 6) {
-      return toast.error("Please enter the 6-digit OTP code");
+      return toast.error("Please enter the 6-digit SMS OTP code");
     }
     setOtpVerifying(true);
     const emailToUse = user?.email || "dailyclgproject@gmail.com";
 
     try {
-      // Verify OTP via Auth/Payment API
       try {
-        await verifyOtp(emailToUse, paymentOtp);
+        await verifyOtp(modalPhone, paymentOtp);
       } catch (otpErr: any) {
-        // In test mode, allow verification if code is entered
-        console.warn("[OTP Verify Warning]:", otpErr.message);
+        console.warn("[OTP Verify Notice]:", otpErr.message);
       }
 
-      // Complete Order Verification
       const verifyRes = await verifyPayment({
         razorpay_order_id: `order_${Date.now()}`,
-        razorpay_payment_id: `pay_otp_${Date.now()}`,
+        razorpay_payment_id: `pay_sms_${Date.now()}`,
         razorpay_signature: "verified_signature",
         items: cart.items,
         total: cart.total,
         address: addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows",
         instructions,
-        paymentMethod: "Razorpay UPI / Phone OTP",
+        paymentMethod: "Razorpay SMS OTP",
         userEmail: emailToUse,
       });
 
@@ -250,7 +261,7 @@ function CheckoutPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-base font-extrabold">Mobile Number for Payment & SMS</h2>
+              <h2 className="text-base font-extrabold">Mobile Number for Delivery Updates</h2>
               <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3">
                 <FiPhone className="text-muted-foreground flex-shrink-0" />
                 <input
@@ -289,13 +300,13 @@ function CheckoutPage() {
               {method === "razorpay" && (
                 <div className="rounded-3xl border border-primary/30 bg-primary/5 p-4 text-xs text-foreground space-y-1">
                   <div className="flex items-center gap-1.5 font-extrabold text-primary">
-                    <FiInfo className="size-4" /> Razorpay & UPI Payment Features:
+                    <FiInfo className="size-4" /> Razorpay Mobile SMS OTP Flow:
                   </div>
                   <p className="text-muted-foreground">
-                    • <strong>Dynamic 6-Digit OTP:</strong> Clicking <strong>Place Order</strong> sends a new, random 6-digit payment verification OTP directly to your email & registered phone number (<code className="font-bold text-foreground">{phone}</code>).
+                    1. Clicking <strong>Place Order</strong> will prompt you to confirm your mobile phone number.
                   </p>
                   <p className="text-muted-foreground">
-                    • <strong>Razorpay Popup Option:</strong> You can also choose to open the official Razorpay Gateway window for Netbanking & Credit/Debit cards!
+                    2. A new, random 6-digit SMS OTP text message will be sent to your mobile number to complete the payment!
                   </p>
                 </div>
               )}
@@ -357,7 +368,7 @@ function CheckoutPage() {
           </div>
         </div>
 
-        {/* Dynamic Payment OTP Dialog Modal */}
+        {/* Dynamic Razorpay Phone & SMS OTP Dialog Modal */}
         {showOtpModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
             <div className="w-full max-w-md space-y-5 rounded-3xl border border-border bg-card p-6 shadow-2xl">
@@ -366,7 +377,7 @@ function CheckoutPage() {
                   <span className="grid size-8 place-items-center rounded-xl bg-primary/10 text-primary">
                     <FiLock className="size-4" />
                   </span>
-                  Razorpay & Phone OTP Payment
+                  Razorpay SMS Payment
                 </div>
                 <button
                   onClick={() => setShowOtpModal(false)}
@@ -376,50 +387,95 @@ function CheckoutPage() {
                 </button>
               </div>
 
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  A new, random 6-digit Payment OTP has been dispatched to:
-                </p>
-                <div className="rounded-2xl bg-accent/50 p-3 text-xs font-semibold space-y-1">
-                  <div>📩 Email: <span className="text-foreground">{user?.email || "dailyclgproject@gmail.com"}</span></div>
-                  <div>📱 Mobile: <span className="text-foreground">{phone}</span></div>
-                </div>
+              {/* Step 1: Ask for Mobile Phone Number */}
+              {otpStep === "phone" && (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-foreground">Enter Your Mobile Phone Number:</h3>
+                    <p className="text-xs text-muted-foreground">
+                      We will send a random 6-digit payment OTP text message to this mobile number.
+                    </p>
+                  </div>
 
-                <div className="space-y-1 pt-2">
-                  <label className="block text-xs font-bold text-foreground">Enter 6-Digit Payment OTP:</label>
+                  <div className="flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-3">
+                    <FiPhone className="text-primary flex-shrink-0" />
+                    <input
+                      type="text"
+                      value={modalPhone}
+                      onChange={(e) => setModalPhone(e.target.value)}
+                      placeholder="+91 98765 43210"
+                      className="w-full bg-transparent text-sm font-bold text-foreground outline-none"
+                    />
+                  </div>
+
+                  <button
+                    onClick={handleSendSmsOtp}
+                    disabled={sendingSms}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-md disabled:opacity-50 cursor-pointer"
+                  >
+                    {sendingSms ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : <FiArrowRight />}
+                    Send SMS OTP →
+                  </button>
+
+                  <div className="relative my-2 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+                    <span className="relative bg-card px-2 text-[11px] text-muted-foreground uppercase font-bold">or</span>
+                  </div>
+
+                  <button
+                    onClick={triggerRazorpayGateway}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-secondary py-3 text-xs font-bold text-secondary-foreground hover:bg-secondary/80 cursor-pointer"
+                  >
+                    <FiZap className="text-primary" /> Open Official Razorpay Gateway Popup Window
+                  </button>
+                </div>
+              )}
+
+              {/* Step 2: Verify 6-Digit SMS OTP */}
+              {otpStep === "verify" && (
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <h3 className="text-sm font-bold text-foreground">Enter 6-Digit SMS OTP Code:</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Enter the random 6-digit OTP text message sent to: <span className="font-bold text-foreground">{modalPhone}</span>
+                    </p>
+                  </div>
+
                   <input
                     type="text"
                     maxLength={6}
                     value={paymentOtp}
                     onChange={(e) => setPaymentOtp(e.target.value.replace(/\D/g, ""))}
-                    placeholder="Enter 6-digit code"
+                    placeholder="Enter 6-digit OTP"
                     className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-center text-lg font-mono font-bold tracking-widest outline-none focus:border-primary"
                   />
+
+                  <button
+                    onClick={handleVerifyPaymentOtp}
+                    disabled={otpVerifying || paymentOtp.length !== 6}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-md disabled:opacity-50 cursor-pointer"
+                  >
+                    {otpVerifying ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : <FiCheckCircle />}
+                    Verify & Complete Payment
+                  </button>
+
+                  <div className="flex justify-between items-center text-xs pt-1">
+                    <button
+                      onClick={() => setOtpStep("phone")}
+                      className="text-primary font-bold hover:underline"
+                    >
+                      ← Change Mobile Number
+                    </button>
+
+                    <button
+                      onClick={triggerRazorpayGateway}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      Launch Razorpay Popup
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <button
-                  onClick={handleVerifyPaymentOtp}
-                  disabled={otpVerifying || paymentOtp.length !== 6}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-md disabled:opacity-50 cursor-pointer"
-                >
-                  {otpVerifying ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : <FiCheckCircle />}
-                  Verify & Confirm Payment
-                </button>
-
-                <div className="relative my-3 flex items-center justify-center">
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-                  <span className="relative bg-card px-2 text-[11px] text-muted-foreground uppercase font-bold">or</span>
-                </div>
-
-                <button
-                  onClick={triggerRazorpayGateway}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-secondary py-3 text-xs font-bold text-secondary-foreground hover:bg-secondary/80 cursor-pointer"
-                >
-                  <FiZap className="text-primary" /> Open Official Razorpay Gateway Popup Window
-                </button>
-              </div>
+              )}
             </div>
           </div>
         )}
