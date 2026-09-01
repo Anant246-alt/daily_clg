@@ -8,10 +8,6 @@ function record(error: unknown) {
   lastCapturedError = { error, at: Date.now() };
 }
 
-// h3's HTTPError serializes to {"status":500,"unhandled":true,"message":"HTTPError"} —
-// no stack, no cause — so a plain console.error(error) reaches the log pipeline with
-// the failure detail stripped. Expand Error-like args into a string that keeps the
-// message, stack, and the full cause chain.
 const CAUSE_DEPTH_LIMIT = 5;
 const DESCRIPTION_LENGTH_LIMIT = 8_000;
 
@@ -49,11 +45,20 @@ function isErrorLike(value: unknown): value is Error {
   return value instanceof Error;
 }
 
-// Wrap console.error so errors logged by any layer — including h3's internal
-// unhandled-error logging, which this file cannot hook directly — are both
-// recorded for consumeLastCapturedError and expanded before serialization.
+const isNoiseError = (msg: string) =>
+  msg.includes("message channel closed") ||
+  msg.includes("listener indicated an asynchronous response") ||
+  msg.includes("Receiving end does not exist") ||
+  msg.includes("blocked by CORS policy") ||
+  msg.includes("ERR_FAILED");
+
+// Wrap console.error to filter third-party browser extension noise
 const originalConsoleError = console.error.bind(console);
 console.error = (...args: unknown[]) => {
+  const firstArgStr = String(args[0] ?? "");
+  if (isNoiseError(firstArgStr)) {
+    return;
+  }
   const expanded = args.map((arg) => {
     if (!isErrorLike(arg)) return arg;
     record(arg);
@@ -63,22 +68,30 @@ console.error = (...args: unknown[]) => {
 };
 
 if (typeof globalThis.addEventListener === "function") {
-  globalThis.addEventListener("error", (event) => record((event as ErrorEvent).error ?? event));
-  globalThis.addEventListener("unhandledrejection", (event) => {
-    const reason = (event as PromiseRejectionEvent).reason;
-    const msg = String(reason?.message ?? reason ?? "");
-    if (
-      msg.includes("message channel closed before a response was received") ||
-      msg.includes("listener indicated an asynchronous response") ||
-      msg.includes("Receiving end does not exist")
-    ) {
-      if (typeof event.preventDefault === "function") {
-        event.preventDefault();
-      }
-      return;
-    }
-    record(reason);
+  globalThis.addEventListener("error", (event) => {
+    const msg = String((event as ErrorEvent).message ?? (event as ErrorEvent).error ?? event);
+    if (isNoiseError(msg)) return;
+    record((event as ErrorEvent).error ?? event);
   });
+
+  globalThis.addEventListener(
+    "unhandledrejection",
+    (event) => {
+      const reason = (event as PromiseRejectionEvent).reason;
+      const msg = String(reason?.message ?? reason ?? "");
+      if (isNoiseError(msg)) {
+        if (typeof event.preventDefault === "function") {
+          event.preventDefault();
+        }
+        if (typeof event.stopImmediatePropagation === "function") {
+          event.stopImmediatePropagation();
+        }
+        return;
+      }
+      record(reason);
+    },
+    true
+  );
 }
 
 export function consumeLastCapturedError(): unknown {
