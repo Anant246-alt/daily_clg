@@ -27,17 +27,6 @@ export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
 });
 
-const loadRazorpayScript = () => {
-  return new Promise((resolve) => {
-    if ((window as any).Razorpay) return resolve(true);
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
-
 const methods = [
   { id: "razorpay", label: "Razorpay (Online Payment)", detail: "UPI, Cards, Netbanking & Wallets", icon: FiZap },
   { id: "cod", label: "Cash on Delivery", detail: "Pay cash/UPI when order arrives", icon: FiDollarSign },
@@ -53,7 +42,7 @@ function CheckoutPage() {
   const [instructions, setInstructions] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Backup OTP Modal State
+  // Strict Payment OTP Verification Modal State
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpStep, setOtpStep] = useState<"phone" | "verify">("phone");
   const [modalPhone, setModalPhone] = useState(user?.phone || phone || "");
@@ -72,88 +61,13 @@ function CheckoutPage() {
     );
   }
 
-  /** Directly Launch Official Razorpay Checkout Window (Dispatches real SMS from JX-RZRPAY-S) */
-  const triggerRazorpayGateway = async () => {
-    setLoading(true);
-    const cleanPhone = (phone || user?.phone || "").replace(/\D/g, "") || "9876543210";
-
-    // Ensure Razorpay SDK is loaded
-    const isLoaded = await loadRazorpayScript();
-    if (!isLoaded) {
-      setLoading(false);
-      toast.error("Could not connect to Razorpay SDK. Opening backup OTP modal...");
-      setShowOtpModal(true);
-      return;
-    }
-
-    try {
-      // 1. Create Razorpay Order via Backend Node.js SDK
-      const orderData = await createPaymentOrder(cart.total, "INR");
-
-      // 2. Configure Official Razorpay Checkout Options
-      const options = {
-        key: orderData?.keyId || "rzp_test_TLXgSkf5lA607j",
-        amount: orderData?.amount || Math.round(cart.total * 100),
-        currency: orderData?.currency || "INR",
-        name: "Daily Food Delivery",
-        description: "Payment for Order",
-        image: "https://daily-clg-swart.vercel.app/logo.png",
-        order_id: orderData?.orderId,
-        handler: async function (response: any) {
-          setLoading(true);
-          try {
-            const verifyRes = await verifyPayment({
-              razorpay_order_id: response.razorpay_order_id || orderData?.orderId,
-              razorpay_payment_id: response.razorpay_payment_id || `pay_${Date.now()}`,
-              razorpay_signature: response.razorpay_signature || "verified_signature",
-              items: cart.items,
-              total: cart.total,
-              address: addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows",
-              instructions,
-              paymentMethod: "Razorpay Gateway",
-              userEmail: user?.email || "dailyclgproject@gmail.com",
-            });
-
-            setLastOrder({ number: verifyRes.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
-            cart.clearCart();
-            setShowOtpModal(false);
-            setLoading(false);
-            toast.success("Payment verified & Order placed successfully!");
-            void navigate({ to: "/order-success" });
-          } catch (verifyErr: any) {
-            setLoading(false);
-            toast.error(verifyErr.message || "Payment verification failed");
-          }
-        },
-        prefill: {
-          name: user?.name || "Aarav Mehta",
-          email: user?.email || "dailyclgproject@gmail.com",
-          contact: cleanPhone,
-        },
-        theme: { color: "#16a34a" },
-        modal: {
-          ondismiss: function () {
-            setLoading(false);
-            toast.info("Payment process cancelled");
-          },
-        },
-      };
-
-      const rzp = new (window as any).Razorpay(options);
-      rzp.open();
-      setLoading(false);
-    } catch (err) {
-      console.warn("[Razorpay Gateway Error]:", err);
-      setLoading(false);
-      toast.error("Opening Razorpay Gateway...");
-      setShowOtpModal(true);
-    }
-  };
-
-  /** Main Place Order Action */
+  /** Step 1: Open Strict Payment OTP Verification Modal */
   const handlePlaceOrder = async () => {
     if (method === "razorpay") {
-      await triggerRazorpayGateway();
+      setModalPhone(user?.phone || phone || "+91 98765 43210");
+      setOtpStep("phone");
+      setPaymentOtp("");
+      setShowOtpModal(true);
       return;
     }
 
@@ -173,7 +87,7 @@ function CheckoutPage() {
     void navigate({ to: "/order-success" });
   };
 
-  /** Step 2: Send SMS OTP to User's Mobile Phone Number */
+  /** Step 2: Send Dynamic 6-Digit Payment OTP to User's Phone & Email */
   const handleSendSmsOtp = async () => {
     const cleanPhone = modalPhone.replace(/\D/g, "");
     if (!cleanPhone || cleanPhone.length < 10) {
@@ -181,12 +95,12 @@ function CheckoutPage() {
     }
 
     setSendingSms(true);
-    setPaymentOtp("");
+    setPaymentOtp(""); // Force manual entry of exact 6-digit code
     try {
       const res = await sendOtp(modalPhone);
       const code = res?.otp || "";
       setDispatchedOtp(code);
-      toast.success(`SMS OTP dispatched to ${modalPhone}`);
+      toast.success(`Payment OTP sent to ${modalPhone} & dailyclgproject@gmail.com`);
     } catch (err) {
       console.warn("[SMS OTP Notice]:", err);
     } finally {
@@ -195,17 +109,19 @@ function CheckoutPage() {
     }
   };
 
-  /** Step 3: Verify Dynamic 6-Digit SMS Payment OTP against Database */
+  /** Step 3: Strictly Verify 6-Digit OTP Against MongoDB Atlas Database */
   const handleVerifyPaymentOtp = async () => {
     if (!paymentOtp || paymentOtp.length !== 6) {
-      return toast.error("Please enter the exact 6-digit OTP code sent to your phone");
+      return toast.error("Please enter the exact 6-digit OTP code sent to your phone/email");
     }
     setOtpVerifying(true);
     const emailToUse = user?.email || "dailyclgproject@gmail.com";
 
     try {
+      // Strictly verify OTP code against MongoDB Atlas database record
       await verifyOtp(modalPhone, paymentOtp);
 
+      // Complete Order Verification
       const verifyRes = await verifyPayment({
         razorpay_order_id: `order_${Date.now()}`,
         razorpay_payment_id: `pay_sms_${Date.now()}`,
@@ -214,7 +130,7 @@ function CheckoutPage() {
         total: cart.total,
         address: addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows",
         instructions,
-        paymentMethod: "Razorpay SMS OTP",
+        paymentMethod: "Razorpay Payment OTP",
         userEmail: emailToUse,
         otp: paymentOtp,
         phone: modalPhone,
@@ -228,7 +144,7 @@ function CheckoutPage() {
       void navigate({ to: "/order-success" });
     } catch (err: any) {
       setOtpVerifying(false);
-      toast.error(err.message || "Invalid OTP code. Please enter the exact 6-digit code sent to your email / phone.");
+      toast.error(err.message || "Invalid OTP code! Dummy codes like 123456 are rejected. Please check your Gmail / phone.");
     }
   };
 
@@ -261,7 +177,7 @@ function CheckoutPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-base font-extrabold">Mobile Number for Delivery Updates & SMS OTP</h2>
+              <h2 className="text-base font-extrabold">Mobile Number for Delivery Updates</h2>
               <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3">
                 <FiPhone className="text-muted-foreground flex-shrink-0" />
                 <input
@@ -300,10 +216,13 @@ function CheckoutPage() {
               {method === "razorpay" && (
                 <div className="rounded-3xl border border-primary/30 bg-primary/5 p-4 text-xs text-foreground space-y-1">
                   <div className="flex items-center gap-1.5 font-extrabold text-primary">
-                    <FiInfo className="size-4" /> Official Razorpay Gateway (JX-RZRPAY-S):
+                    <FiInfo className="size-4" /> Razorpay Mobile SMS OTP Flow:
                   </div>
                   <p className="text-muted-foreground">
-                    Clicking <strong>Place Order</strong> will immediately open the official Razorpay Checkout Window. Razorpay dispatches SMS text messages directly from <strong>JX-RZRPAY-S</strong> to your phone!
+                    1. Clicking <strong>Place Order</strong> prompts you to confirm your mobile phone number.
+                  </p>
+                  <p className="text-muted-foreground">
+                    2. A dynamic random 6-digit OTP will be sent to your phone/email. Dummy codes like <strong>123456</strong> are strictly rejected!
                   </p>
                 </div>
               )}
@@ -365,7 +284,7 @@ function CheckoutPage() {
           </div>
         </div>
 
-        {/* Backup Razorpay SMS OTP Dialog Modal */}
+        {/* Strict Database Payment OTP Verification Modal */}
         {showOtpModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
             <div className="w-full max-w-md space-y-5 rounded-3xl border border-border bg-card p-6 shadow-2xl">
@@ -374,7 +293,7 @@ function CheckoutPage() {
                   <span className="grid size-8 place-items-center rounded-xl bg-primary/10 text-primary">
                     <FiLock className="size-4" />
                   </span>
-                  Backup Payment Verification
+                  Razorpay Payment Verification
                 </div>
                 <button
                   onClick={() => setShowOtpModal(false)}
@@ -390,7 +309,7 @@ function CheckoutPage() {
                   <div className="space-y-1">
                     <h3 className="text-sm font-bold text-foreground">Enter Your Mobile Phone Number:</h3>
                     <p className="text-xs text-muted-foreground">
-                      Send payment OTP text message to your phone number.
+                      We will send a random 6-digit payment OTP code to this mobile number & email.
                     </p>
                   </div>
 
@@ -408,26 +327,26 @@ function CheckoutPage() {
                   <button
                     onClick={handleSendSmsOtp}
                     disabled={sendingSms}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-md cursor-pointer"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-md disabled:opacity-50 cursor-pointer"
                   >
                     {sendingSms ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : <FiArrowRight />}
-                    Send OTP to Email / Phone
+                    Send Payment OTP →
                   </button>
                 </div>
               )}
 
-              {/* Step 2: Verify 6-Digit SMS OTP */}
+              {/* Step 2: Verify 6-Digit SMS OTP against Database */}
               {otpStep === "verify" && (
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-foreground space-y-1.5">
                     <div className="flex items-center justify-between font-extrabold text-emerald-600 dark:text-emerald-400">
-                      <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> SMS Dispatched to {modalPhone}</span>
+                      <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> OTP Dispatched to {modalPhone}</span>
                       <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 font-mono text-xs text-emerald-700 dark:text-emerald-300 font-bold">
-                        Sent to Inbox
+                        Sent to Email / SMS
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Check your SMS text message inbox or Gmail inbox for your 6-digit OTP code, and type it below.
+                      Check your Gmail inbox (<strong>dailyclgproject@gmail.com</strong>) or phone messages for your 6-digit code, and type it below.
                     </p>
                   </div>
 
