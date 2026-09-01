@@ -185,42 +185,33 @@ function CheckoutPage() {
     }
 
     setSendingSms(true);
+    setPaymentOtp(""); // Force manual typing of exact 6-digit code
     try {
       const res = await sendOtp(modalPhone);
-      const code = res?.otp || Math.floor(100000 + Math.random() * 900000).toString();
+      const code = res?.otp || "";
       setDispatchedOtp(code);
-      setPaymentOtp(code); // Pre-fill for instant seamless verification
-      toast.success(`SMS OTP dispatched to ${modalPhone}`, {
-        description: `Your 6-Digit Payment OTP is: ${code}`,
-      });
+      toast.success(`SMS OTP dispatched to ${modalPhone}`);
     } catch (err) {
-      const fallbackCode = Math.floor(100000 + Math.random() * 900000).toString();
-      setDispatchedOtp(fallbackCode);
-      setPaymentOtp(fallbackCode);
-      toast.success(`SMS OTP dispatched to ${modalPhone}`, {
-        description: `Your 6-Digit Payment OTP is: ${fallbackCode}`,
-      });
+      console.warn("[SMS OTP Notice]:", err);
     } finally {
       setSendingSms(false);
       setOtpStep("verify");
     }
   };
 
-  /** Step 3: Verify Dynamic 6-Digit SMS Payment OTP */
+  /** Step 3: Verify Dynamic 6-Digit SMS Payment OTP against Database */
   const handleVerifyPaymentOtp = async () => {
     if (!paymentOtp || paymentOtp.length !== 6) {
-      return toast.error("Please enter the 6-digit SMS OTP code");
+      return toast.error("Please enter the exact 6-digit OTP code");
     }
     setOtpVerifying(true);
     const emailToUse = user?.email || "dailyclgproject@gmail.com";
 
     try {
-      try {
-        await verifyOtp(modalPhone, paymentOtp);
-      } catch (otpErr: any) {
-        console.warn("[OTP Verify Notice]:", otpErr.message);
-      }
+      // Strictly verify OTP code against MongoDB Atlas database record
+      await verifyOtp(modalPhone, paymentOtp);
 
+      // Complete Order Verification
       const verifyRes = await verifyPayment({
         razorpay_order_id: `order_${Date.now()}`,
         razorpay_payment_id: `pay_sms_${Date.now()}`,
@@ -241,7 +232,7 @@ function CheckoutPage() {
       void navigate({ to: "/order-success" });
     } catch (err: any) {
       setOtpVerifying(false);
-      toast.error(err.message || "Payment verification failed");
+      toast.error(err.message || "Invalid OTP code. Please enter the exact 6-digit code sent to your email / phone.");
     }
   };
 
@@ -316,10 +307,10 @@ function CheckoutPage() {
                     <FiInfo className="size-4" /> Razorpay Mobile SMS OTP Flow:
                   </div>
                   <p className="text-muted-foreground">
-                    1. Clicking <strong>Place Order</strong> will prompt you to confirm your mobile phone number.
+                    1. Clicking <strong>Place Order</strong> will prompt you for your mobile phone number.
                   </p>
                   <p className="text-muted-foreground">
-                    2. A new, random 6-digit SMS OTP code will be dispatched to your mobile number and displayed on-screen!
+                    2. A new random 6-digit Payment OTP code will be sent to your mobile number / email address.
                   </p>
                 </div>
               )}
@@ -451,11 +442,11 @@ function CheckoutPage() {
                     <div className="flex items-center justify-between font-extrabold text-emerald-600 dark:text-emerald-400">
                       <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> SMS Dispatched to {modalPhone}:</span>
                       <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 font-mono text-sm tracking-widest text-emerald-700 dark:text-emerald-300 font-bold">
-                        {dispatchedOtp || "847291"}
+                        {dispatchedOtp || "Check Email / Phone"}
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      This random 6-digit OTP code has been auto-filled below for instant verification!
+                      Type the exact 6-digit OTP code sent to your phone / email address below.
                     </p>
                   </div>
 
