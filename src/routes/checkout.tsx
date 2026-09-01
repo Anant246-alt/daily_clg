@@ -27,6 +27,17 @@ export const Route = createFileRoute("/checkout")({
   component: CheckoutPage,
 });
 
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if ((window as any).Razorpay) return resolve(true);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
 const methods = [
   { id: "razorpay", label: "Razorpay (Online Payment)", detail: "UPI, Cards, Netbanking & Wallets", icon: FiZap },
   { id: "cod", label: "Cash on Delivery", detail: "Pay cash/UPI when order arrives", icon: FiDollarSign },
@@ -42,7 +53,7 @@ function CheckoutPage() {
   const [instructions, setInstructions] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Custom Payment OTP Modal State
+  // Backup OTP Modal State
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpStep, setOtpStep] = useState<"phone" | "verify">("phone");
   const [modalPhone, setModalPhone] = useState(user?.phone || phone || "");
@@ -61,16 +72,25 @@ function CheckoutPage() {
     );
   }
 
-  /** Trigger Official Razorpay Checkout Modal (Dispatches real SMS from JX-RZRPAY-S) */
+  /** Directly Launch Official Razorpay Checkout Window (Dispatches real SMS from JX-RZRPAY-S) */
   const triggerRazorpayGateway = async () => {
     setLoading(true);
-    const cleanPhone = modalPhone.replace(/\D/g, "");
+    const cleanPhone = (phone || user?.phone || "").replace(/\D/g, "") || "9876543210";
+
+    // Ensure Razorpay SDK is loaded
+    const isLoaded = await loadRazorpayScript();
+    if (!isLoaded) {
+      setLoading(false);
+      toast.error("Could not connect to Razorpay SDK. Opening backup OTP modal...");
+      setShowOtpModal(true);
+      return;
+    }
 
     try {
-      // 1. Create Razorpay Order from backend SDK
+      // 1. Create Razorpay Order via Backend Node.js SDK
       const orderData = await createPaymentOrder(cart.total, "INR");
 
-      // 2. Configure Official Razorpay SDK Options
+      // 2. Configure Official Razorpay Checkout Options
       const options = {
         key: orderData?.keyId || "rzp_test_TLXgSkf5lA607j",
         amount: orderData?.amount || Math.round(cart.total * 100),
@@ -108,7 +128,7 @@ function CheckoutPage() {
         prefill: {
           name: user?.name || "Aarav Mehta",
           email: user?.email || "dailyclgproject@gmail.com",
-          contact: cleanPhone || "9876543210",
+          contact: cleanPhone,
         },
         theme: { color: "#16a34a" },
         modal: {
@@ -125,15 +145,15 @@ function CheckoutPage() {
     } catch (err) {
       console.warn("[Razorpay Gateway Error]:", err);
       setLoading(false);
+      toast.error("Opening Razorpay Gateway...");
       setShowOtpModal(true);
     }
   };
 
-  /** Step 1: Open Payment Modal or Launch Gateway */
+  /** Main Place Order Action */
   const handlePlaceOrder = async () => {
     if (method === "razorpay") {
-      setModalPhone(user?.phone || phone || "");
-      setShowOtpModal(true);
+      await triggerRazorpayGateway();
       return;
     }
 
@@ -161,7 +181,7 @@ function CheckoutPage() {
     }
 
     setSendingSms(true);
-    setPaymentOtp(""); // Force manual typing of exact 6-digit code
+    setPaymentOtp("");
     try {
       const res = await sendOtp(modalPhone);
       const code = res?.otp || "";
@@ -184,10 +204,8 @@ function CheckoutPage() {
     const emailToUse = user?.email || "dailyclgproject@gmail.com";
 
     try {
-      // Strictly verify OTP code against MongoDB Atlas database record
       await verifyOtp(modalPhone, paymentOtp);
 
-      // Complete Order Verification
       const verifyRes = await verifyPayment({
         razorpay_order_id: `order_${Date.now()}`,
         razorpay_payment_id: `pay_sms_${Date.now()}`,
@@ -243,7 +261,7 @@ function CheckoutPage() {
             </section>
 
             <section className="space-y-3">
-              <h2 className="text-base font-extrabold">Mobile Number for Delivery Updates</h2>
+              <h2 className="text-base font-extrabold">Mobile Number for Delivery Updates & SMS OTP</h2>
               <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3">
                 <FiPhone className="text-muted-foreground flex-shrink-0" />
                 <input
@@ -282,13 +300,10 @@ function CheckoutPage() {
               {method === "razorpay" && (
                 <div className="rounded-3xl border border-primary/30 bg-primary/5 p-4 text-xs text-foreground space-y-1">
                   <div className="flex items-center gap-1.5 font-extrabold text-primary">
-                    <FiInfo className="size-4" /> Razorpay Mobile SMS OTP Flow (JX-RZRPAY-S):
+                    <FiInfo className="size-4" /> Official Razorpay Gateway (JX-RZRPAY-S):
                   </div>
                   <p className="text-muted-foreground">
-                    1. Clicking <strong>Place Order</strong> launches Official Razorpay SMS Gateway modal.
-                  </p>
-                  <p className="text-muted-foreground">
-                    2. Razorpay sends an SMS text message from <strong>JX-RZRPAY-S</strong> directly to your mobile SIM card!
+                    Clicking <strong>Place Order</strong> will immediately open the official Razorpay Checkout Window. Razorpay dispatches SMS text messages directly from <strong>JX-RZRPAY-S</strong> to your phone!
                   </p>
                 </div>
               )}
@@ -350,7 +365,7 @@ function CheckoutPage() {
           </div>
         </div>
 
-        {/* Dynamic Razorpay Phone & SMS OTP Dialog Modal */}
+        {/* Backup Razorpay SMS OTP Dialog Modal */}
         {showOtpModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
             <div className="w-full max-w-md space-y-5 rounded-3xl border border-border bg-card p-6 shadow-2xl">
@@ -359,7 +374,7 @@ function CheckoutPage() {
                   <span className="grid size-8 place-items-center rounded-xl bg-primary/10 text-primary">
                     <FiLock className="size-4" />
                   </span>
-                  Razorpay SMS Payment (JX-RZRPAY-S)
+                  Backup Payment Verification
                 </div>
                 <button
                   onClick={() => setShowOtpModal(false)}
@@ -375,7 +390,7 @@ function CheckoutPage() {
                   <div className="space-y-1">
                     <h3 className="text-sm font-bold text-foreground">Enter Your Mobile Phone Number:</h3>
                     <p className="text-xs text-muted-foreground">
-                      Receive official Razorpay payment OTP text messages from <strong>JX-RZRPAY-S</strong> directly on your SIM card.
+                      Send payment OTP text message to your phone number.
                     </p>
                   </div>
 
@@ -391,21 +406,9 @@ function CheckoutPage() {
                   </div>
 
                   <button
-                    onClick={triggerRazorpayGateway}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-md cursor-pointer"
-                  >
-                    <FiZap /> Launch Official Razorpay SMS Gateway (JX-RZRPAY-S)
-                  </button>
-
-                  <div className="relative my-2 flex items-center justify-center">
-                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-                    <span className="relative bg-card px-2 text-[11px] text-muted-foreground uppercase font-bold">or</span>
-                  </div>
-
-                  <button
                     onClick={handleSendSmsOtp}
                     disabled={sendingSms}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-secondary py-3 text-xs font-bold text-secondary-foreground hover:bg-secondary/80 cursor-pointer"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-md cursor-pointer"
                   >
                     {sendingSms ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : <FiArrowRight />}
                     Send OTP to Email / Phone
@@ -420,11 +423,11 @@ function CheckoutPage() {
                     <div className="flex items-center justify-between font-extrabold text-emerald-600 dark:text-emerald-400">
                       <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> SMS Dispatched to {modalPhone}</span>
                       <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 font-mono text-xs text-emerald-700 dark:text-emerald-300 font-bold">
-                        JX-RZRPAY-S
+                        Sent to Inbox
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Check your SMS text message inbox for your 6-digit OTP code from <strong>JX-RZRPAY-S</strong> or Gmail inbox, and type it below.
+                      Check your SMS text message inbox or Gmail inbox for your 6-digit OTP code, and type it below.
                     </p>
                   </div>
 
