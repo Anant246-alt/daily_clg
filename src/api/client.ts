@@ -1,7 +1,9 @@
 import axios from "axios";
 
+// Always use relative /api path so HTTP requests stay on the current deployment domain (e.g. daily-clg-swart.vercel.app/api)
+// preventing cross-origin CORS errors.
 export const api = axios.create({
-  baseURL: import.meta.env["VITE_API_URL"] || "/api",
+  baseURL: "/api",
   headers: { "Content-Type": "application/json" },
   timeout: 15000,
 });
