@@ -31,11 +31,16 @@ export const sendOtp = async (req, res, next) => {
     }
 
     const html = getOtpEmailTemplate(otpCode);
-    sendEmail({
-      to: email,
-      subject: `Your Daily Verification Code: ${otpCode}`,
-      html,
-    }).catch((err) => console.warn(`[Nodemailer Background Warning]: ${err.message}`));
+    try {
+      await sendEmail({
+        to: email,
+        subject: `Your Daily Verification Code: ${otpCode}`,
+        html,
+      });
+      console.log(`[Nodemailer Success] OTP ${otpCode} sent to ${email}`);
+    } catch (err) {
+      console.warn(`[Nodemailer Warning]: ${err.message}`);
+    }
 
     return res.status(200).json({
       success: true,
