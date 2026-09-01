@@ -10,7 +10,7 @@ import { useCart } from "@/context/CartContext";
 import { useOrders } from "@/context/OrderContext";
 import { useAuth } from "@/context/AuthContext";
 import { placeOrder } from "@/api/orders";
-import { createPaymentOrder, verifyPayment } from "@/api/payment";
+import { verifyPayment } from "@/api/payment";
 import { sendOtp, verifyOtp } from "@/api/auth";
 import { currency } from "@/utils/format";
 import { cn } from "@/lib/utils";
@@ -31,19 +31,6 @@ const methods = [
   { id: "razorpay", label: "Razorpay (Online Payment)", detail: "UPI, Cards, Netbanking & Wallets", icon: FiZap },
   { id: "cod", label: "Cash on Delivery", detail: "Pay cash/UPI when order arrives", icon: FiDollarSign },
 ];
-
-const loadRazorpayScript = () => {
-  return new Promise<boolean>((resolve) => {
-    if (typeof window !== "undefined" && (window as any).Razorpay) {
-      return resolve(true);
-    }
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-};
 
 function CheckoutPage() {
   const cart = useCart();
@@ -73,82 +60,6 @@ function CheckoutPage() {
       </AppShell>
     );
   }
-
-  /** Triggers Official Razorpay Popup Window directly */
-  const triggerRazorpayGateway = async () => {
-    setShowOtpModal(false);
-    setLoading(true);
-
-    const isLoaded = await loadRazorpayScript();
-    if (isLoaded && (window as any).Razorpay) {
-      try {
-        const orderData = await createPaymentOrder(cart.total);
-        const keyId = orderData?.keyId || "rzp_test_TLXgSkf5lA607j";
-        const amountInPaise = orderData?.amount || Math.round(cart.total * 100);
-        const cleanPhone = (modalPhone || phone).replace(/\D/g, "") || "9876543210";
-
-        const options: any = {
-          key: keyId,
-          amount: amountInPaise,
-          currency: "INR",
-          name: "Daily Food Delivery",
-          description: "Order Payment",
-          handler: async function (response: any) {
-            try {
-              const verifyRes = await verifyPayment({
-                razorpay_order_id: response.razorpay_order_id || orderData?.orderId || `order_${Date.now()}`,
-                razorpay_payment_id: response.razorpay_payment_id || `pay_test_${Date.now()}`,
-                razorpay_signature: response.razorpay_signature || "verified_signature",
-                items: cart.items,
-                total: cart.total,
-                address: addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows",
-                instructions,
-                paymentMethod: "Razorpay Gateway",
-                userEmail: user?.email || "dailyclgproject@gmail.com",
-              });
-              setLastOrder({ number: verifyRes.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
-              cart.clearCart();
-              setLoading(false);
-              toast.success("Payment verified & Order placed!");
-              void navigate({ to: "/order-success" });
-            } catch (err: any) {
-              setLoading(false);
-              toast.error(err.message || "Payment verification failed");
-            }
-          },
-          prefill: {
-            name: user?.name || "Aarav Mehta",
-            email: user?.email || "dailyclgproject@gmail.com",
-            contact: cleanPhone,
-          },
-          theme: { color: "#16a34a" },
-          modal: {
-            ondismiss: function () {
-              setLoading(false);
-              toast.info("Payment process cancelled");
-            },
-          },
-        };
-
-        if (
-          orderData?.orderId &&
-          orderData.orderId.startsWith("order_") &&
-          !orderData.orderId.startsWith("order_test_")
-        ) {
-          options.order_id = orderData.orderId;
-        }
-
-        const rzp = new (window as any).Razorpay(options);
-        rzp.open();
-        return;
-      } catch (err) {
-        console.warn("[Razorpay Modal Error]:", err);
-        setLoading(false);
-        toast.error("Could not launch Razorpay gateway");
-        return;
-      }
-    }
-  };
 
   /** Step 1: Open Payment Modal to Ask for Phone Number */
   const handlePlaceOrder = async () => {
@@ -201,7 +112,7 @@ function CheckoutPage() {
   /** Step 3: Verify Dynamic 6-Digit SMS Payment OTP against Database */
   const handleVerifyPaymentOtp = async () => {
     if (!paymentOtp || paymentOtp.length !== 6) {
-      return toast.error("Please enter the exact 6-digit OTP code");
+      return toast.error("Please enter the exact 6-digit OTP code sent to your phone");
     }
     setOtpVerifying(true);
     const emailToUse = user?.email || "dailyclgproject@gmail.com";
@@ -221,6 +132,8 @@ function CheckoutPage() {
         instructions,
         paymentMethod: "Razorpay SMS OTP",
         userEmail: emailToUse,
+        otp: paymentOtp,
+        phone: modalPhone,
       });
 
       setLastOrder({ number: verifyRes.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
@@ -380,7 +293,7 @@ function CheckoutPage() {
                   <span className="grid size-8 place-items-center rounded-xl bg-primary/10 text-primary">
                     <FiLock className="size-4" />
                   </span>
-                  Razorpay SMS Payment
+                  Razorpay SMS Payment Verification
                 </div>
                 <button
                   onClick={() => setShowOtpModal(false)}
@@ -418,18 +331,6 @@ function CheckoutPage() {
                   >
                     {sendingSms ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : <FiArrowRight />}
                     Send SMS OTP →
-                  </button>
-
-                  <div className="relative my-2 flex items-center justify-center">
-                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-                    <span className="relative bg-card px-2 text-[11px] text-muted-foreground uppercase font-bold">or</span>
-                  </div>
-
-                  <button
-                    onClick={triggerRazorpayGateway}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-secondary py-3 text-xs font-bold text-secondary-foreground hover:bg-secondary/80 cursor-pointer"
-                  >
-                    <FiZap className="text-primary" /> Open Official Razorpay Gateway Popup Window
                   </button>
                 </div>
               )}
@@ -470,19 +371,12 @@ function CheckoutPage() {
                     Verify & Complete Payment
                   </button>
 
-                  <div className="flex justify-between items-center text-xs pt-1">
+                  <div className="flex justify-start items-center text-xs pt-1">
                     <button
                       onClick={() => setOtpStep("phone")}
                       className="text-primary font-bold hover:underline"
                     >
                       ← Change Mobile Number
-                    </button>
-
-                    <button
-                      onClick={triggerRazorpayGateway}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      Launch Razorpay Popup
                     </button>
                   </div>
                 </div>
