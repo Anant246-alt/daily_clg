@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FiPlus, FiCreditCard, FiSmartphone, FiDollarSign, FiZap, FiInfo } from "react-icons/fi";
+import { FiPlus, FiCreditCard, FiSmartphone, FiDollarSign, FiZap, FiInfo, FiPhone } from "react-icons/fi";
 import { toast } from "sonner";
 import { AppShell } from "@/layouts/AppShell";
 import { PageTransition } from "@/components/PageTransition";
@@ -27,10 +27,10 @@ export const Route = createFileRoute("/checkout")({
 });
 
 const methods = [
-  { id: "upi", label: "UPI", detail: "GPay, PhonePe, Paytm", icon: FiSmartphone },
-  { id: "card", label: "Credit / Debit card", detail: "Visa, Mastercard, Rupay", icon: FiCreditCard },
-  { id: "razorpay", label: "Razorpay", detail: "Netbanking, wallets & more", icon: FiZap },
-  { id: "cod", label: "Cash on delivery", detail: "Pay when it arrives", icon: FiDollarSign },
+  { id: "razorpay", label: "Razorpay Wallet & All Methods", detail: "Paytm, Mobikwik, PhonePe, Netbanking", icon: FiZap },
+  { id: "upi", label: "UPI Instant Payment", detail: "GPay, PhonePe, Paytm UPI", icon: FiSmartphone },
+  { id: "card", label: "Credit / Debit Card", detail: "Visa, Mastercard, RuPay", icon: FiCreditCard },
+  { id: "cod", label: "Cash on Delivery", detail: "Pay when it arrives", icon: FiDollarSign },
 ];
 
 const loadRazorpayScript = () => {
@@ -52,6 +52,7 @@ function CheckoutPage() {
   const { user } = useAuth();
   const { addresses, selectedAddressId, selectAddress, setLastOrder } = useOrders();
   const [method, setMethod] = useState("razorpay");
+  const [phone, setPhone] = useState(user?.phone || "+91 98765 43210");
   const [instructions, setInstructions] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -77,6 +78,8 @@ function CheckoutPage() {
           const keyId = orderData?.keyId || "rzp_test_TLXgSkf5lA607j";
           const amountInPaise = orderData?.amount || Math.round(cart.total * 100);
 
+          const cleanPhone = phone.replace(/\D/g, "") || "9876543210";
+
           const options: any = {
             key: keyId,
             amount: amountInPaise,
@@ -93,7 +96,7 @@ function CheckoutPage() {
                   total: cart.total,
                   address: addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows",
                   instructions,
-                  paymentMethod: "Razorpay Test Mode",
+                  paymentMethod: "Razorpay Gateway",
                   userEmail: user?.email || "dailyclgproject@gmail.com",
                 });
                 setLastOrder({ number: verifyRes.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
@@ -109,7 +112,7 @@ function CheckoutPage() {
             prefill: {
               name: user?.name || "Aarav Mehta",
               email: user?.email || "dailyclgproject@gmail.com",
-              contact: user?.phone?.replace(/\D/g, "") || "9876543210",
+              contact: cleanPhone,
             },
             theme: { color: "#16a34a" },
             modal: {
@@ -184,6 +187,20 @@ function CheckoutPage() {
             </section>
 
             <section className="space-y-3">
+              <h2 className="text-base font-extrabold">Mobile Number for Payment & SMS</h2>
+              <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3">
+                <FiPhone className="text-muted-foreground flex-shrink-0" />
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full bg-transparent text-sm text-foreground outline-none font-medium"
+                />
+              </div>
+            </section>
+
+            <section className="space-y-3">
               <h2 className="text-base font-extrabold">Payment method</h2>
               <div className="grid gap-2 sm:grid-cols-2">
                 {methods.map(({ id, label, detail, icon: Icon }) => (
@@ -191,7 +208,7 @@ function CheckoutPage() {
                     key={id}
                     onClick={() => setMethod(id)}
                     className={cn(
-                      "flex items-center gap-3 rounded-3xl border bg-card p-4 text-left transition",
+                      "flex items-center gap-3 rounded-3xl border bg-card p-4 text-left transition cursor-pointer",
                       method === id ? "border-primary shadow-[var(--shadow-soft)]" : "border-border",
                     )}
                   >
@@ -212,10 +229,10 @@ function CheckoutPage() {
                     <FiInfo className="size-4" /> Razorpay Test Mode Instructions:
                   </div>
                   <p className="text-muted-foreground">
-                    • <strong>Test Payment OTP Prompt:</strong> Enter any 4-digit or 6-digit code (e.g. <code className="font-bold text-foreground">1234</code> or <code className="font-bold text-foreground">123456</code>) into the Razorpay modal and click <strong>Continue</strong> to instantly complete the payment.
+                    • <strong>Razorpay Wallet / OTP Screen:</strong> Type any 4-digit code (e.g. <code className="font-bold text-foreground">1234</code> or <code className="font-bold text-foreground">123456</code>) into the Razorpay modal and click <strong>Continue</strong> to approve.
                   </p>
                   <p className="text-muted-foreground">
-                    • <strong>Test Cards / Netbanking:</strong> Click the green <strong>Success</strong> button inside the Razorpay modal screen.
+                    • <strong>Mobile Number:</strong> Prefilled automatically with your number above: <code className="font-bold text-foreground">{phone}</code>
                   </p>
                 </div>
               )}
