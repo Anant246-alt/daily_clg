@@ -371,12 +371,19 @@ function CheckoutPage() {
                     Verify & Complete Payment
                   </button>
 
-                  <div className="flex justify-start items-center text-xs pt-1">
+                  <div className="flex justify-between items-center text-xs pt-1">
                     <button
                       onClick={() => setOtpStep("phone")}
                       className="text-primary font-bold hover:underline"
                     >
                       ← Change Mobile Number
+                    </button>
+                    <button
+                      onClick={handleSendSmsOtp}
+                      disabled={sendingSms}
+                      className="text-muted-foreground hover:text-foreground font-semibold cursor-pointer"
+                    >
+                      🔄 Resend OTP Code
                     </button>
                   </div>
                 </div>
