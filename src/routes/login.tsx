@@ -36,12 +36,22 @@ function LoginPage() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [seconds, setSeconds] = useState(30);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (hydrated && isAuthenticated) {
       void navigate({ to: "/home" });
     }
   }, [hydrated, isAuthenticated, navigate]);
+
+  useEffect(() => {
+    if (step === "email") {
+      const timer = setTimeout(() => {
+        emailInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [step]);
 
   useEffect(() => {
     if (step !== "otp" || seconds === 0) return;
@@ -119,26 +129,32 @@ function LoginPage() {
               exit={{ opacity: 0, x: 20 }}
               className="space-y-4 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]"
             >
-              <label className="block space-y-2">
+              <label htmlFor="email-input" className="block space-y-2 cursor-pointer">
                 <span className="text-sm font-semibold">Email or Phone number</span>
-                <span className="flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-3">
-                  <FiMail className="text-muted-foreground" />
+                <span className="flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-3 cursor-text focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/30">
+                  <FiMail className="text-muted-foreground flex-shrink-0" />
                   <input
+                    id="email-input"
+                    name="email"
+                    ref={emailInputRef}
                     type="text"
+                    autoFocus
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
                     placeholder="you@example.com or 9876543210"
-                    className="w-full bg-transparent text-sm outline-none"
+                    className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none cursor-text relative z-10"
                   />
                 </span>
               </label>
               {error && <p className="text-xs font-medium text-destructive">{error}</p>}
               <motion.button
+                type="button"
                 whileTap={{ scale: 0.97 }}
                 onClick={handleSendOtp}
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-70"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-70 cursor-pointer"
               >
                 {loading ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : null}
                 Send OTP <FiArrowRight />
@@ -175,10 +191,11 @@ function LoginPage() {
               </div>
               {error && <p className="text-xs font-medium text-destructive">{error}</p>}
               <motion.button
+                type="button"
                 whileTap={{ scale: 0.97 }}
                 onClick={handleVerify}
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-70"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-70 cursor-pointer"
               >
                 {loading ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : null}
                 Verify OTP
@@ -186,23 +203,25 @@ function LoginPage() {
 
               <div className="flex items-center justify-between text-xs">
                 <button
+                  type="button"
                   onClick={() => {
                     setStep("email");
                     setOtp(["", "", "", "", "", ""]);
                     setError("");
                   }}
-                  className="inline-flex items-center gap-1 font-semibold text-muted-foreground"
+                  className="inline-flex items-center gap-1 font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
                 >
                   <FiEdit2 /> Change input
                 </button>
                 <button
+                  type="button"
                   disabled={seconds > 0}
                   onClick={() => {
                     setSeconds(30);
                     void sendOtp(email);
                     toast.success("OTP resent");
                   }}
-                  className="font-bold text-primary disabled:text-muted-foreground"
+                  className="font-bold text-primary disabled:text-muted-foreground cursor-pointer"
                 >
                   {seconds > 0 ? `Resend in ${seconds}s` : "Resend OTP"}
                 </button>
