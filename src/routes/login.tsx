@@ -66,13 +66,14 @@ function LoginPage() {
     setLoading(true);
     try {
       await sendOtp(email);
-    } catch (err: any) {
-      console.warn("[Auth Warning] OTP call fallback:", err);
-    } finally {
-      setLoading(false);
       setStep("otp");
       setSeconds(30);
       toast.success(`OTP sent to ${email}`, { description: "Check your email inbox for your 6-digit verification code" });
+    } catch (err: any) {
+      console.warn("[Auth Warning] OTP call failed:", err);
+      setError(err.message || "Could not send OTP email. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
