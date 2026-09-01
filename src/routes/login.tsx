@@ -72,7 +72,7 @@ function LoginPage() {
       setLoading(false);
       setStep("otp");
       setSeconds(30);
-      toast.success(`OTP sent to ${email}`, { description: "Enter any 6 digits to verify (or 123456)" });
+      toast.success(`OTP sent to ${email}`, { description: "Check your email inbox for your 6-digit verification code" });
     }
   };
 
