@@ -4,6 +4,7 @@ import { User } from "../models/User.js";
 import { Otp } from "../models/Otp.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { getOtpEmailTemplate } from "../utils/emailTemplates.js";
+import { connectDB } from "../config/db.js";
 
 const generateToken = (id, email) => {
   return jwt.sign({ id, email }, process.env.JWT_SECRET || "928b2b3d-c5f4-4d18-b8a1-f1d5e3b76391", {
@@ -18,28 +19,29 @@ export const sendOtp = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Email is required" });
     }
 
+    // Ensure database connection
+    await connectDB();
+
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    if (mongoose.connection.readyState === 1) {
-      try {
-        await Otp.deleteMany({ email: email.toLowerCase() });
-        await Otp.create({ email: email.toLowerCase(), otp: otpCode, expiresAt });
-      } catch (dbErr) {
-        console.warn(`[Otp Warning] DB write failed: ${dbErr.message}`);
-      }
+    try {
+      await Otp.deleteMany({ email: email.toLowerCase() });
+      await Otp.create({ email: email.toLowerCase(), otp: otpCode, expiresAt });
+      console.log(`[OTP Saved] OTP ${otpCode} stored for ${email}`);
+    } catch (dbErr) {
+      console.warn(`[Otp Warning] DB write failed: ${dbErr.message}`);
     }
 
     const html = getOtpEmailTemplate(otpCode);
-    try {
-      await sendEmail({
-        to: email,
-        subject: `Your Daily Verification Code: ${otpCode}`,
-        html,
-      });
-      console.log(`[Nodemailer Success] OTP ${otpCode} sent to ${email}`);
-    } catch (err) {
-      console.warn(`[Nodemailer Warning]: ${err.message}`);
+    const emailResult = await sendEmail({
+      to: email,
+      subject: `Your Daily Verification Code: ${otpCode}`,
+      html,
+    });
+
+    if (!emailResult.success) {
+      console.warn(`[Nodemailer Dispatch Failed]: ${emailResult.error}`);
     }
 
     return res.status(200).json({
@@ -64,35 +66,35 @@ export const verifyOtp = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "OTP must be 6 digits" });
     }
 
+    await connectDB();
+
     let user = null;
 
-    if (mongoose.connection.readyState === 1) {
-      try {
-        const record = await Otp.findOne({ email: email.toLowerCase(), otp });
-        if (record) {
-          await Otp.deleteOne({ _id: record._id });
-        }
-      } catch (dbErr) {
-        console.warn(`[Otp Check] DB query failed: ${dbErr.message}`);
+    try {
+      const record = await Otp.findOne({ email: email.toLowerCase(), otp });
+      if (record) {
+        await Otp.deleteOne({ _id: record._id });
       }
+    } catch (dbErr) {
+      console.warn(`[Otp Check] DB query failed: ${dbErr.message}`);
+    }
 
-      try {
-        user = await User.findOne({ email: email.toLowerCase() });
-        if (!user) {
-          const nameFromEmail = email.split("@")[0];
-          const formattedName = nameFromEmail
-            .replace(/[._]/g, " ")
-            .replace(/\b\w/g, (l) => l.toUpperCase());
+    try {
+      user = await User.findOne({ email: email.toLowerCase() });
+      if (!user) {
+        const nameFromEmail = email.split("@")[0];
+        const formattedName = nameFromEmail
+          .replace(/[._]/g, " ")
+          .replace(/\b\w/g, (l) => l.toUpperCase());
 
-          user = await User.create({
-            email: email.toLowerCase(),
-            name: formattedName || "Aarav Mehta",
-            phone: "+91 98765 43210",
-          });
-        }
-      } catch (dbErr) {
-        console.warn(`[User Check] DB query failed: ${dbErr.message}`);
+        user = await User.create({
+          email: email.toLowerCase(),
+          name: formattedName || "Aarav Mehta",
+          phone: "+91 98765 43210",
+        });
       }
+    } catch (dbErr) {
+      console.warn(`[User Check] DB query failed: ${dbErr.message}`);
     }
 
     if (!user) {

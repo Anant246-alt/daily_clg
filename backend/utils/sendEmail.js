@@ -1,28 +1,34 @@
 import nodemailer from "nodemailer";
 
+const DEFAULT_EMAIL_USER = "dailyclgproject@gmail.com";
+const DEFAULT_EMAIL_PASS = "wrbimcktkcejmipb";
+
 export const sendEmail = async ({ to, subject, html }) => {
+  const user = process.env.EMAIL_USER || DEFAULT_EMAIL_USER;
+  const pass = process.env.EMAIL_PASS || DEFAULT_EMAIL_PASS;
+  const from = process.env.EMAIL_FROM || `Daily <${user}>`;
+
   try {
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+        user,
+        pass,
       },
     });
 
     const mailOptions = {
-      from: process.env.EMAIL_FROM || `Daily <${process.env.EMAIL_USER}>`,
+      from,
       to,
       subject,
       html,
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`[Nodemailer] Email sent: ${info.messageId} to ${to}`);
+    console.log(`[Nodemailer Success] Email sent to ${to}: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error(`[Nodemailer Error] Could not send email to ${to}:`, error.message);
-    // Return gracefully so flow does not break if SMTP credentials are test credentials
+    console.error(`[Nodemailer Error] Failed to send email to ${to}:`, error.message);
     return { success: false, error: error.message };
   }
 };
