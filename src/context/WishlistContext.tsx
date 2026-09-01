@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useCallback, type ReactNode } from "react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { products, type Product } from "@/data/products";
 
@@ -15,15 +15,24 @@ const WishlistContext = createContext<WishlistValue>({} as WishlistValue);
 export function WishlistProvider({ children }: { children: ReactNode }) {
   const [ids, setIds] = useLocalStorage<string[]>("daily.wishlist", ["p4", "p1"]);
 
+  const isSaved = useCallback((id: string) => ids.includes(id), [ids]);
+
+  const toggle = useCallback(
+    (id: string) => setIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id])),
+    [setIds],
+  );
+
+  const remove = useCallback((id: string) => setIds((prev) => prev.filter((i) => i !== id)), [setIds]);
+
   const value = useMemo<WishlistValue>(
     () => ({
       ids,
       items: products.filter((p) => ids.includes(p.id)),
-      isSaved: (id) => ids.includes(id),
-      toggle: (id) => setIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id])),
-      remove: (id) => setIds((prev) => prev.filter((i) => i !== id)),
+      isSaved,
+      toggle,
+      remove,
     }),
-    [ids, setIds],
+    [ids, isSaved, toggle, remove],
   );
 
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>;

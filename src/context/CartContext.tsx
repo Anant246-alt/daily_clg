@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useCallback, type ReactNode } from "react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import type { Product } from "@/data/products";
 import { DELIVERY_FEE, GST_RATE } from "@/utils/format";
@@ -39,6 +39,46 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useLocalStorage<CartItem[]>("daily.cart", []);
   const [promo, setPromo] = useLocalStorage<string | null>("daily.promo", null);
 
+  const addItem = useCallback(
+    (p: Product, qty = 1) =>
+      setItems((prev) => {
+        const found = prev.find((i) => i.id === p.id);
+        if (found) return prev.map((i) => (i.id === p.id ? { ...i, qty: i.qty + qty } : i));
+        return [
+          ...prev,
+          { id: p.id, name: p.name, image: p.image, price: p.price, mrp: p.mrp, veg: p.veg, qty },
+        ];
+      }),
+    [setItems],
+  );
+
+  const removeItem = useCallback((id: string) => setItems((prev) => prev.filter((i) => i.id !== id)), [setItems]);
+
+  const setQty = useCallback(
+    (id: string, qty: number) =>
+      setItems((prev) =>
+        qty <= 0 ? prev.filter((i) => i.id !== id) : prev.map((i) => (i.id === id ? { ...i, qty } : i)),
+      ),
+    [setItems],
+  );
+
+  const applyPromo = useCallback(
+    (code: string) => {
+      const key = code.trim().toUpperCase();
+      if (!PROMOS[key]) return false;
+      setPromo(key);
+      return true;
+    },
+    [setPromo],
+  );
+
+  const clearPromo = useCallback(() => setPromo(null), [setPromo]);
+
+  const clearCart = useCallback(() => {
+    setItems([]);
+    setPromo(null);
+  }, [setItems, setPromo]);
+
   const value = useMemo<CartValue>(() => {
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
     const discount = promo ? Math.round(subtotal * (PROMOS[promo] ?? 0)) : 0;
@@ -54,34 +94,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
       delivery,
       total: Math.max(0, subtotal - discount + gst + delivery),
       promo,
-      addItem: (p, qty = 1) =>
-        setItems((prev) => {
-          const found = prev.find((i) => i.id === p.id);
-          if (found) return prev.map((i) => (i.id === p.id ? { ...i, qty: i.qty + qty } : i));
-          return [
-            ...prev,
-            { id: p.id, name: p.name, image: p.image, price: p.price, mrp: p.mrp, veg: p.veg, qty },
-          ];
-        }),
-      removeItem: (id) => setItems((prev) => prev.filter((i) => i.id !== id)),
-      setQty: (id, qty) =>
-        setItems((prev) =>
-          qty <= 0 ? prev.filter((i) => i.id !== id) : prev.map((i) => (i.id === id ? { ...i, qty } : i)),
-        ),
+      addItem,
+      removeItem,
+      setQty,
       qtyOf: (id) => items.find((i) => i.id === id)?.qty ?? 0,
-      applyPromo: (code) => {
-        const key = code.trim().toUpperCase();
-        if (!PROMOS[key]) return false;
-        setPromo(key);
-        return true;
-      },
-      clearPromo: () => setPromo(null),
-      clearCart: () => {
-        setItems([]);
-        setPromo(null);
-      },
+      applyPromo,
+      clearPromo,
+      clearCart,
     };
-  }, [items, promo, setItems, setPromo]);
+  }, [items, promo, addItem, removeItem, setQty, applyPromo, clearPromo, clearCart]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

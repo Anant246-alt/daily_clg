@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useCallback, type ReactNode } from "react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { orders as seedOrders, type Order } from "@/data/orders";
 
@@ -56,24 +56,45 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     null,
   );
 
+  const selectAddress = useCallback((id: string) => setSelectedAddressId(id), [setSelectedAddressId]);
+
+  const saveAddress = useCallback(
+    (address: Address) =>
+      setAddresses((prev) =>
+        prev.some((a) => a.id === address.id)
+          ? prev.map((a) => (a.id === address.id ? address : a))
+          : [...prev, address],
+      ),
+    [setAddresses],
+  );
+
+  const deleteAddress = useCallback((id: string) => setAddresses((prev) => prev.filter((a) => a.id !== id)), [setAddresses]);
+
+  const createOrder = useCallback((order: Order) => setOrders((prev) => [order, ...prev]), [setOrders]);
+
   const value = useMemo<OrderValue>(
     () => ({
       orders,
       lastOrder,
       addresses,
       selectedAddressId,
-      selectAddress: setSelectedAddressId,
-      saveAddress: (address) =>
-        setAddresses((prev) =>
-          prev.some((a) => a.id === address.id)
-            ? prev.map((a) => (a.id === address.id ? address : a))
-            : [...prev, address],
-        ),
-      deleteAddress: (id) => setAddresses((prev) => prev.filter((a) => a.id !== id)),
-      createOrder: (order) => setOrders((prev) => [order, ...prev]),
+      selectAddress,
+      saveAddress,
+      deleteAddress,
+      createOrder,
       setLastOrder,
     }),
-    [orders, addresses, selectedAddressId, lastOrder, setAddresses, setOrders, setSelectedAddressId, setLastOrder],
+    [
+      orders,
+      lastOrder,
+      addresses,
+      selectedAddressId,
+      selectAddress,
+      saveAddress,
+      deleteAddress,
+      createOrder,
+      setLastOrder,
+    ],
   );
 
   return <OrderContext.Provider value={value}>{children}</OrderContext.Provider>;

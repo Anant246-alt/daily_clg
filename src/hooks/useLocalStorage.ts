@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
-/** localStorage-backed state that is SSR-safe (reads after hydration). */
+/** localStorage-backed state that is SSR-safe and memoization-stable. */
 export function useLocalStorage<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(initial);
   const [hydrated, setHydrated] = useState(false);
@@ -8,7 +8,9 @@ export function useLocalStorage<T>(key: string, initial: T) {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(key);
-      if (raw != null) setValue(JSON.parse(raw) as T);
+      if (raw != null) {
+        setValue(JSON.parse(raw) as T);
+      }
     } catch {
       /* ignore corrupted entries */
     }
@@ -24,5 +26,9 @@ export function useLocalStorage<T>(key: string, initial: T) {
     }
   }, [key, value, hydrated]);
 
-  return [value, setValue, hydrated] as const;
+  const updateValue = useCallback((val: T | ((prev: T) => T)) => {
+    setValue(val);
+  }, []);
+
+  return [value, updateValue, hydrated] as const;
 }
