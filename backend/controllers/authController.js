@@ -77,17 +77,17 @@ export const sendOtp = async (req, res) => {
   }
 };
 
-export const verifyOtp = async (req, res, next) => {
+export const verifyOtp = async (req, res) => {
   try {
     const { email, phone, identifier: rawId, otp } = req.body || {};
     const identifier = (email || phone || rawId || "dailyclgproject@gmail.com").trim().toLowerCase();
 
     if (!otp) {
-      return res.status(400).json({ success: false, message: "OTP is required" });
+      return res.status(200).json({ success: false, message: "OTP code is required" });
     }
 
     if (otp.length !== 6) {
-      return res.status(400).json({ success: false, message: "OTP must be 6 digits" });
+      return res.status(200).json({ success: false, message: "OTP must be 6 digits" });
     }
 
     try {
@@ -112,9 +112,9 @@ export const verifyOtp = async (req, res, next) => {
       }
 
       if (!record) {
-        return res.status(400).json({
+        return res.status(200).json({
           success: false,
-          message: "Invalid or expired OTP code. Please enter the exact code sent to your mobile phone / email.",
+          message: "Invalid or expired OTP code! Dummy codes like 123456 or 1234 are rejected. Please check your Gmail inbox.",
         });
       }
     }
@@ -164,7 +164,11 @@ export const verifyOtp = async (req, res, next) => {
       },
     });
   } catch (error) {
-    next(error);
+    console.error("[verifyOtp Controller Error]:", error);
+    return res.status(200).json({
+      success: false,
+      message: "OTP verification failed. Please try again.",
+    });
   }
 };
 
