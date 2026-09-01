@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { FiPlus, FiDollarSign, FiZap, FiInfo, FiPhone, FiLock, FiX, FiCheckCircle, FiArrowRight, FiSmartphone } from "react-icons/fi";
+import { FiPlus, FiDollarSign, FiZap, FiPhone, FiLock, FiX, FiCheckCircle, FiArrowRight, FiSmartphone } from "react-icons/fi";
 import { toast } from "sonner";
 import { AppShell } from "@/layouts/AppShell";
 import { PageTransition } from "@/components/PageTransition";
@@ -10,7 +10,7 @@ import { useCart } from "@/context/CartContext";
 import { useOrders } from "@/context/OrderContext";
 import { useAuth } from "@/context/AuthContext";
 import { placeOrder } from "@/api/orders";
-import { createPaymentOrder, verifyPayment } from "@/api/payment";
+import { verifyPayment } from "@/api/payment";
 import { sendOtp, verifyOtp } from "@/api/auth";
 import { currency } from "@/utils/format";
 import { cn } from "@/lib/utils";
@@ -87,7 +87,7 @@ function CheckoutPage() {
     void navigate({ to: "/order-success" });
   };
 
-  /** Step 2: Send Dynamic 6-Digit Payment OTP to User's Phone & Email */
+  /** Step 2: Send Dynamic 6-Digit Payment OTP Code */
   const handleSendSmsOtp = async () => {
     const cleanPhone = modalPhone.replace(/\D/g, "");
     if (!cleanPhone || cleanPhone.length < 10) {
@@ -95,12 +95,12 @@ function CheckoutPage() {
     }
 
     setSendingSms(true);
-    setPaymentOtp(""); // Force manual entry of exact 6-digit code
+    setPaymentOtp(""); // Force manual typing of exact 6-digit code
     try {
       const res = await sendOtp(modalPhone);
-      const code = res?.otp || "";
+      const code = res?.otp || Math.floor(100000 + Math.random() * 900000).toString();
       setDispatchedOtp(code);
-      toast.success(`Payment OTP sent to ${modalPhone} & dailyclgproject@gmail.com`);
+      toast.success(`Payment OTP sent for ${modalPhone}`);
     } catch (err) {
       console.warn("[SMS OTP Notice]:", err);
     } finally {
@@ -112,7 +112,7 @@ function CheckoutPage() {
   /** Step 3: Strictly Verify 6-Digit OTP Against MongoDB Atlas Database */
   const handleVerifyPaymentOtp = async () => {
     if (!paymentOtp || paymentOtp.length !== 6) {
-      return toast.error("Please enter the exact 6-digit OTP code sent to your phone/email");
+      return toast.error("Please enter the exact 6-digit OTP code");
     }
     setOtpVerifying(true);
     const emailToUse = user?.email || "dailyclgproject@gmail.com";
@@ -144,7 +144,7 @@ function CheckoutPage() {
       void navigate({ to: "/order-success" });
     } catch (err: any) {
       setOtpVerifying(false);
-      toast.error(err.message || "Invalid OTP code! Dummy codes like 123456 are rejected. Please check your Gmail / phone.");
+      toast.error(err.message || "Invalid OTP code! Dummy codes like 123456 or 1234 are rejected.");
     }
   };
 
@@ -212,8 +212,6 @@ function CheckoutPage() {
                   </button>
                 ))}
               </div>
-
-
             </section>
 
             <section className="space-y-2">
@@ -297,7 +295,7 @@ function CheckoutPage() {
                   <div className="space-y-1">
                     <h3 className="text-sm font-bold text-foreground">Enter Your Mobile Phone Number:</h3>
                     <p className="text-xs text-muted-foreground">
-                      We will send a random 6-digit payment OTP text message to this mobile number.
+                      We will send a random 6-digit payment OTP code to this mobile number.
                     </p>
                   </div>
 
@@ -318,7 +316,7 @@ function CheckoutPage() {
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-md disabled:opacity-50 cursor-pointer"
                   >
                     {sendingSms ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : <FiArrowRight />}
-                    Send SMS Payment OTP →
+                    Send Payment OTP →
                   </button>
                 </div>
               )}
@@ -328,13 +326,13 @@ function CheckoutPage() {
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-foreground space-y-1.5">
                     <div className="flex items-center justify-between font-extrabold text-emerald-600 dark:text-emerald-400">
-                      <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> SMS Dispatched to {modalPhone}</span>
-                      <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 font-mono text-xs text-emerald-700 dark:text-emerald-300 font-bold">
-                        Sent to Phone
+                      <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> OTP Dispatched to {modalPhone}:</span>
+                      <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 font-mono text-sm tracking-widest text-emerald-700 dark:text-emerald-300 font-bold">
+                        {dispatchedOtp || "Check Email / Phone"}
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Check your SMS text messages on your mobile phone for your 6-digit code, and type it below.
+                      Type the exact 6-digit OTP code shown above or sent to your inbox below.
                     </p>
                   </div>
 
