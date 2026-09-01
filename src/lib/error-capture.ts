@@ -64,9 +64,21 @@ console.error = (...args: unknown[]) => {
 
 if (typeof globalThis.addEventListener === "function") {
   globalThis.addEventListener("error", (event) => record((event as ErrorEvent).error ?? event));
-  globalThis.addEventListener("unhandledrejection", (event) =>
-    record((event as PromiseRejectionEvent).reason),
-  );
+  globalThis.addEventListener("unhandledrejection", (event) => {
+    const reason = (event as PromiseRejectionEvent).reason;
+    const msg = String(reason?.message ?? reason ?? "");
+    if (
+      msg.includes("message channel closed before a response was received") ||
+      msg.includes("listener indicated an asynchronous response") ||
+      msg.includes("Receiving end does not exist")
+    ) {
+      if (typeof event.preventDefault === "function") {
+        event.preventDefault();
+      }
+      return;
+    }
+    record(reason);
+  });
 }
 
 export function consumeLastCapturedError(): unknown {

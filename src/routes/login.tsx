@@ -11,15 +11,20 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Sign in · Daily" },
-      { name: "description", content: "Sign in to Daily with a one-time password sent to your email." },
+      { name: "description", content: "Sign in to Daily with a one-time password sent to your email or phone." },
       { property: "og:title", content: "Sign in · Daily" },
-      { property: "og:description", content: "Sign in to Daily with a one-time password sent to your email." },
+      { property: "og:description", content: "Sign in to Daily with a one-time password sent to your email or phone." },
     ],
   }),
   component: LoginPage,
 });
 
-const emailValid = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const inputValid = (v: string) => {
+  const trimmed = v.trim();
+  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  const isPhone = /^\+?[0-9]{10,12}$/.test(trimmed.replace(/[\s-]/g, ""));
+  return isEmail || isPhone;
+};
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -44,9 +49,9 @@ function LoginPage() {
     return () => clearTimeout(t);
   }, [step, seconds]);
 
-  /** POST /auth/send-otp — Nodemailer delivers the 6-digit code. */
+  /** POST /auth/send-otp — delivers the 6-digit code. */
   const handleSendOtp = async () => {
-    if (!emailValid(email)) return setError("Enter a valid email address");
+    if (!inputValid(email)) return setError("Enter a valid email address or 10-digit phone number");
     setError("");
     setLoading(true);
     try {
@@ -57,7 +62,7 @@ function LoginPage() {
       setLoading(false);
       setStep("otp");
       setSeconds(30);
-      toast.success(`OTP sent to ${email}`, { description: "Enter any 6 digits to verify" });
+      toast.success(`OTP sent to ${email}`, { description: "Enter any 6 digits to verify (or 123456)" });
     }
   };
 
@@ -96,7 +101,7 @@ function LoginPage() {
             D
           </span>
           <h1 className="text-2xl font-black sm:text-3xl">
-            {step === "email" ? "Welcome back" : "Verify your email"}
+            {step === "email" ? "Welcome back" : "Verify your account"}
           </h1>
           <p className="text-sm text-muted-foreground">
             {step === "email"
@@ -115,15 +120,15 @@ function LoginPage() {
               className="space-y-4 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]"
             >
               <label className="block space-y-2">
-                <span className="text-sm font-semibold">Email address</span>
+                <span className="text-sm font-semibold">Email or Phone number</span>
                 <span className="flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-3">
                   <FiMail className="text-muted-foreground" />
                   <input
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
-                    placeholder="you@example.com"
+                    placeholder="you@example.com or 9876543210"
                     className="w-full bg-transparent text-sm outline-none"
                   />
                 </span>
@@ -188,7 +193,7 @@ function LoginPage() {
                   }}
                   className="inline-flex items-center gap-1 font-semibold text-muted-foreground"
                 >
-                  <FiEdit2 /> Change email
+                  <FiEdit2 /> Change input
                 </button>
                 <button
                   disabled={seconds > 0}
