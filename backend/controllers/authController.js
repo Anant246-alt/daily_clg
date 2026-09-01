@@ -68,33 +68,44 @@ export const verifyOtp = async (req, res, next) => {
 
     await connectDB();
 
-    let user = null;
-
-    try {
-      const record = await Otp.findOne({ email: email.toLowerCase(), otp });
-      if (record) {
-        await Otp.deleteOne({ _id: record._id });
+    let record = null;
+    if (mongoose.connection.readyState === 1) {
+      try {
+        record = await Otp.findOne({ email: email.toLowerCase(), otp });
+        if (record) {
+          await Otp.deleteOne({ _id: record._id });
+        }
+      } catch (dbErr) {
+        console.warn(`[Otp Check] DB query failed: ${dbErr.message}`);
       }
-    } catch (dbErr) {
-      console.warn(`[Otp Check] DB query failed: ${dbErr.message}`);
-    }
 
-    try {
-      user = await User.findOne({ email: email.toLowerCase() });
-      if (!user) {
-        const nameFromEmail = email.split("@")[0];
-        const formattedName = nameFromEmail
-          .replace(/[._]/g, " ")
-          .replace(/\b\w/g, (l) => l.toUpperCase());
-
-        user = await User.create({
-          email: email.toLowerCase(),
-          name: formattedName || "Aarav Mehta",
-          phone: "+91 98765 43210",
+      if (!record) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired OTP code. Please enter the exact code sent to your Gmail inbox.",
         });
       }
-    } catch (dbErr) {
-      console.warn(`[User Check] DB query failed: ${dbErr.message}`);
+    }
+
+    let user = null;
+    if (mongoose.connection.readyState === 1) {
+      try {
+        user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) {
+          const nameFromEmail = email.split("@")[0];
+          const formattedName = nameFromEmail
+            .replace(/[._]/g, " ")
+            .replace(/\b\w/g, (l) => l.toUpperCase());
+
+          user = await User.create({
+            email: email.toLowerCase(),
+            name: formattedName || "Aarav Mehta",
+            phone: "+91 98765 43210",
+          });
+        }
+      } catch (dbErr) {
+        console.warn(`[User Check] DB query failed: ${dbErr.message}`);
+      }
     }
 
     if (!user) {
