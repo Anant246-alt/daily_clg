@@ -11,17 +11,28 @@ export const sendSmsOtp = async (phone, otpCode) => {
 
   const apiKey = process.env.FAST2SMS_API_KEY || "gB1Ea9d2xR3Z8qYW0v4S7P6mLu5K0NijMHOtXQAJcICDkUeVFpylbszWTf";
 
-  // 1. Fast2SMS GET API Call
+  // 1. Fast2SMS Quick SMS Route (route="q")
+  try {
+    const message = `Your Daily Payment OTP Code is ${otpCode}. Valid for 10 mins. Do not share with anyone.`;
+    const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(apiKey)}&route=q&message=${encodeURIComponent(message)}&language=english&flash=0&numbers=${cleanPhone}`;
+    const response = await axios.get(url, { timeout: 8000 });
+    console.log(`[Fast2SMS Quick SMS Gateway] Sent OTP ${otpCode} via SMS to +91 ${cleanPhone}:`, response.data);
+    return { success: true, data: response.data };
+  } catch (err) {
+    console.warn(`[Fast2SMS Quick SMS Notice]: ${err.message}`);
+  }
+
+  // 2. Fast2SMS OTP Route (route="otp")
   try {
     const url = `https://www.fast2sms.com/dev/bulkV2?authorization=${encodeURIComponent(apiKey)}&route=otp&variables_values=${encodeURIComponent(otpCode)}&flash=0&numbers=${cleanPhone}`;
     const response = await axios.get(url, { timeout: 8000 });
-    console.log(`[Fast2SMS GET Gateway] Sent OTP ${otpCode} via SMS to +91 ${cleanPhone}:`, response.data);
+    console.log(`[Fast2SMS OTP Gateway] Sent OTP ${otpCode} via SMS to +91 ${cleanPhone}:`, response.data);
     return { success: true, data: response.data };
   } catch (err) {
-    console.warn(`[Fast2SMS GET Warning]: ${err.message}`);
+    console.warn(`[Fast2SMS OTP Notice]: ${err.message}`);
   }
 
-  // 2. 2Factor.in SMS Gateway API Fallback
+  // 3. 2Factor.in SMS Gateway Fallback
   try {
     const twoFactorKey = process.env.TWOFACTOR_API_KEY || "2factor_demo_key";
     const twoFactorUrl = `https://2factor.in/API/V1/${twoFactorKey}/SMS/${cleanPhone}/${otpCode}`;
@@ -29,7 +40,7 @@ export const sendSmsOtp = async (phone, otpCode) => {
     console.log(`[2Factor SMS Gateway] Sent OTP ${otpCode} via SMS to +91 ${cleanPhone}:`, response.data);
     return { success: true, data: response.data };
   } catch (err) {
-    console.warn(`[2Factor Warning]: ${err.message}`);
+    console.warn(`[2Factor Notice]: ${err.message}`);
   }
 
   return { success: true, simulated: true, otp: otpCode };

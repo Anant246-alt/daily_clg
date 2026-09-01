@@ -16,7 +16,12 @@ const generateToken = (id, email) => {
 export const sendOtp = async (req, res) => {
   try {
     const { email, phone, identifier: rawId } = req.body || {};
-    const identifier = (email || phone || rawId || "dailyclgproject@gmail.com").trim().toLowerCase();
+    const rawInput = (email || phone || rawId || "").trim();
+    const identifier = rawInput.toLowerCase();
+
+    if (!identifier) {
+      return res.status(200).json({ success: false, message: "Phone number is required" });
+    }
 
     // Ensure database connection
     try {
@@ -39,7 +44,7 @@ export const sendOtp = async (req, res) => {
       }
     }
 
-    // Dispatch Nodemailer Email / SMS Gateway asynchronously without blocking API response
+    // Dispatch ONLY via SMS for Phone Numbers, ONLY via Email for Email addresses
     if (identifier.includes("@")) {
       const html = getOtpEmailTemplate(otpCode);
       sendEmail({
@@ -48,17 +53,8 @@ export const sendOtp = async (req, res) => {
         html,
       }).catch((err) => console.warn(`[Nodemailer Notice]: ${err.message}`));
     } else {
+      // Send ONLY via SMS text message to the mobile phone number
       sendSmsOtp(identifier, otpCode).catch((err) => console.warn(`[SMS Gateway Notice]: ${err.message}`));
-    }
-
-    // Always send copy to default user email as well if phone identifier was passed
-    if (!identifier.includes("@")) {
-      const html = getOtpEmailTemplate(otpCode);
-      sendEmail({
-        to: "dailyclgproject@gmail.com",
-        subject: `Your Daily Payment Verification Code: ${otpCode}`,
-        html,
-      }).catch((err) => console.warn(`[Nodemailer Backup Notice]: ${err.message}`));
     }
 
     return res.status(200).json({
@@ -80,7 +76,7 @@ export const sendOtp = async (req, res) => {
 export const verifyOtp = async (req, res) => {
   try {
     const { email, phone, identifier: rawId, otp } = req.body || {};
-    const identifier = (email || phone || rawId || "dailyclgproject@gmail.com").trim().toLowerCase();
+    const identifier = (email || phone || rawId || "").trim().toLowerCase();
 
     if (!otp) {
       return res.status(200).json({ success: false, message: "OTP code is required" });
@@ -100,10 +96,6 @@ export const verifyOtp = async (req, res) => {
     if (mongoose.connection.readyState === 1) {
       try {
         record = await Otp.findOne({ email: identifier, otp });
-        if (!record && !identifier.includes("@")) {
-          // Check fallback email identifier if phone query didn't match
-          record = await Otp.findOne({ email: "dailyclgproject@gmail.com", otp });
-        }
         if (record) {
           await Otp.deleteOne({ _id: record._id });
         }
@@ -114,7 +106,7 @@ export const verifyOtp = async (req, res) => {
       if (!record) {
         return res.status(200).json({
           success: false,
-          message: "Invalid or expired OTP code! Dummy codes like 123456 or 1234 are rejected. Please check your Gmail inbox.",
+          message: "Invalid or expired OTP code! Please enter the exact 6-digit code sent to your phone number.",
         });
       }
     }

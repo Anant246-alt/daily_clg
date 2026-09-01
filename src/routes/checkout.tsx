@@ -213,19 +213,7 @@ function CheckoutPage() {
                 ))}
               </div>
 
-              {method === "razorpay" && (
-                <div className="rounded-3xl border border-primary/30 bg-primary/5 p-4 text-xs text-foreground space-y-1">
-                  <div className="flex items-center gap-1.5 font-extrabold text-primary">
-                    <FiInfo className="size-4" /> Razorpay Mobile SMS OTP Flow:
-                  </div>
-                  <p className="text-muted-foreground">
-                    1. Clicking <strong>Place Order</strong> prompts you to confirm your mobile phone number.
-                  </p>
-                  <p className="text-muted-foreground">
-                    2. A dynamic random 6-digit OTP will be sent to your phone/email. Dummy codes like <strong>123456</strong> are strictly rejected!
-                  </p>
-                </div>
-              )}
+
             </section>
 
             <section className="space-y-2">
@@ -309,7 +297,7 @@ function CheckoutPage() {
                   <div className="space-y-1">
                     <h3 className="text-sm font-bold text-foreground">Enter Your Mobile Phone Number:</h3>
                     <p className="text-xs text-muted-foreground">
-                      We will send a random 6-digit payment OTP code to this mobile number & email.
+                      We will send a random 6-digit payment OTP text message to this mobile number.
                     </p>
                   </div>
 
@@ -330,7 +318,7 @@ function CheckoutPage() {
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-md disabled:opacity-50 cursor-pointer"
                   >
                     {sendingSms ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : <FiArrowRight />}
-                    Send Payment OTP →
+                    Send SMS Payment OTP →
                   </button>
                 </div>
               )}
@@ -340,13 +328,13 @@ function CheckoutPage() {
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-foreground space-y-1.5">
                     <div className="flex items-center justify-between font-extrabold text-emerald-600 dark:text-emerald-400">
-                      <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> OTP Dispatched to {modalPhone}</span>
+                      <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> SMS Dispatched to {modalPhone}</span>
                       <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 font-mono text-xs text-emerald-700 dark:text-emerald-300 font-bold">
-                        Sent to Email / SMS
+                        Sent to Phone
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Check your Gmail inbox (<strong>dailyclgproject@gmail.com</strong>) or phone messages for your 6-digit code, and type it below.
+                      Check your SMS text messages on your mobile phone for your 6-digit code, and type it below.
                     </p>
                   </div>
 
