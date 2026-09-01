@@ -340,13 +340,13 @@ function CheckoutPage() {
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-foreground space-y-1.5">
                     <div className="flex items-center justify-between font-extrabold text-emerald-600 dark:text-emerald-400">
-                      <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> SMS Dispatched to {modalPhone}:</span>
-                      <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 font-mono text-sm tracking-widest text-emerald-700 dark:text-emerald-300 font-bold">
-                        {dispatchedOtp || "Check Email / Phone"}
+                      <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> SMS Dispatched to {modalPhone}</span>
+                      <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 font-mono text-xs text-emerald-700 dark:text-emerald-300 font-bold">
+                        Sent to Inbox
                       </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground">
-                      Type the exact 6-digit OTP code sent to your phone / email address below.
+                      Check your SMS text message inbox or Gmail inbox for your random 6-digit OTP code, and type it below.
                     </p>
                   </div>
 
