@@ -3,6 +3,7 @@ import { Otp } from "../models/Otp.js";
 import { User } from "../models/User.js";
 import { connectDB } from "../config/db.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { sendSmsOtp } from "../utils/sendSms.js";
 import { getOtpEmailTemplate } from "../utils/emailTemplates.js";
 import mongoose from "mongoose";
 
@@ -49,7 +50,7 @@ export const sendOtp = async (req, res, next) => {
         html,
       });
     } else {
-      console.log(`[SMS Gateway Dispatch] SMS Text Message with OTP ${otpCode} dispatched to ${identifier}`);
+      await sendSmsOtp(identifier, otpCode);
     }
 
     return res.status(200).json({
