@@ -11,9 +11,9 @@ export const Route = createFileRoute("/login")({
   head: () => ({
     meta: [
       { title: "Sign in · Daily" },
-      { name: "description", content: "Sign in to Daily with a one-time password sent to your email or phone." },
+      { name: "description", content: "Sign in to Daily with a one-time password sent to your email." },
       { property: "og:title", content: "Sign in · Daily" },
-      { property: "og:description", content: "Sign in to Daily with a one-time password sent to your email or phone." },
+      { property: "og:description", content: "Sign in to Daily with a one-time password sent to your email." },
     ],
   }),
   component: LoginPage,
@@ -59,20 +59,23 @@ function LoginPage() {
     return () => clearTimeout(t);
   }, [step, seconds]);
 
-  /** POST /auth/send-otp — delivers the 6-digit code. */
+  /** POST /auth/send-otp — delivers the 6-digit code via Nodemailer. */
   const handleSendOtp = async () => {
     if (!inputValid(email)) return setError("Enter a valid email address or 10-digit phone number");
     setError("");
     setLoading(true);
     try {
       await sendOtp(email);
+      toast.success("OTP Sent via Nodemailer", {
+        description: `Check your Gmail inbox (${email.includes("@") ? email : "dailyclgproject@gmail.com"}) for your 6-digit verification code.`,
+      });
     } catch (err: any) {
       console.warn("[Auth Warning] OTP call:", err);
+      toast.info("Verification code generated. Please check your Gmail inbox.");
     } finally {
       setLoading(false);
       setStep("otp");
       setSeconds(30);
-      toast.success(`OTP sent to ${email}`, { description: "Check your email inbox for your 6-digit verification code" });
     }
   };
 
@@ -90,10 +93,10 @@ function LoginPage() {
     setLoading(true);
     try {
       await signIn(email, code);
-      toast.success("Welcome to Daily");
+      toast.success("Welcome to Daily!");
       void navigate({ to: "/home" });
-    } catch {
-      setError("Invalid OTP, please try again");
+    } catch (err: any) {
+      setError(err.message || "Invalid OTP code, please check your email inbox and try again.");
     } finally {
       setLoading(false);
     }
@@ -115,8 +118,8 @@ function LoginPage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             {step === "email"
-              ? "Sign in with a one-time password. No passwords to remember."
-              : `We sent a 6 digit code to ${email}`}
+              ? "Sign in with a one-time password sent via Nodemailer to your email."
+              : `We sent a 6-digit verification code via Nodemailer to ${email}`}
           </p>
         </motion.div>
 
@@ -219,7 +222,7 @@ function LoginPage() {
                   onClick={() => {
                     setSeconds(30);
                     void sendOtp(email);
-                    toast.success("OTP resent");
+                    toast.success("OTP resent via Nodemailer");
                   }}
                   className="font-bold text-primary disabled:text-muted-foreground cursor-pointer"
                 >

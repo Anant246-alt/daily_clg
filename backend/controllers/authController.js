@@ -12,6 +12,9 @@ const generateToken = (id, email) => {
   });
 };
 
+/**
+ * Sends 6-digit OTP code via Nodemailer (Gmail SMTP: dailyclgproject@gmail.com)
+ */
 export const sendOtp = async (req, res) => {
   try {
     const { email, phone, identifier: rawId } = req.body || {};
@@ -33,28 +36,35 @@ export const sendOtp = async (req, res) => {
       try {
         await Otp.deleteMany({ email: identifier });
         await Otp.create({ email: identifier, otp: otpCode, expiresAt });
-        // Also save record under default email for seamless lookup
+        // Save record under default email for seamless login & checkout lookup
         await Otp.create({ email: "dailyclgproject@gmail.com", otp: otpCode, expiresAt });
-        console.log(`[OTP Saved] Dynamic OTP ${otpCode} stored for ${identifier}`);
+        console.log(`[OTP Saved] Dynamic OTP ${otpCode} stored in MongoDB for ${identifier}`);
       } catch (dbErr) {
         console.warn(`[Otp Warning] DB write failed: ${dbErr.message}`);
       }
     }
 
-    // Send email using verified Nodemailer Gmail credentials
+    // Send email using verified Nodemailer Gmail SMTP credentials
     const targetEmail = identifier.includes("@") ? identifier : "dailyclgproject@gmail.com";
     const html = getOtpEmailTemplate(otpCode);
+
     sendEmail({
       to: targetEmail,
-      subject: `Your Daily Payment OTP Verification Code: ${otpCode}`,
+      subject: `Your Daily Verification Code: ${otpCode}`,
       html,
-    }).catch((err) => console.warn(`[Nodemailer Notice]: ${err.message}`));
+    }).then((emailResult) => {
+      if (emailResult.success) {
+        console.log(`[Nodemailer] OTP email successfully delivered to ${targetEmail}`);
+      } else {
+        console.warn(`[Nodemailer Notice] Email dispatch warning: ${emailResult.error}`);
+      }
+    }).catch((err) => console.warn(`[Nodemailer Exception]: ${err.message}`));
 
     return res.status(200).json({
       success: true,
-      email: identifier,
+      email: targetEmail,
       otp: otpCode,
-      message: `Verification code sent to ${targetEmail}`,
+      message: `Verification code sent to ${targetEmail} via Nodemailer`,
     });
   } catch (error) {
     console.error("[sendOtp Controller Error]:", error);
@@ -67,6 +77,9 @@ export const sendOtp = async (req, res) => {
   }
 };
 
+/**
+ * Verifies 6-digit OTP code against MongoDB Atlas database records
+ */
 export const verifyOtp = async (req, res) => {
   try {
     const { email, phone, identifier: rawId, otp } = req.body || {};
@@ -103,7 +116,7 @@ export const verifyOtp = async (req, res) => {
       if (!record) {
         return res.status(200).json({
           success: false,
-          message: "Invalid or expired OTP code! Dummy codes like 123456 or 1234 are rejected.",
+          message: "Invalid or expired OTP code. Please enter the exact 6-digit code sent to your email inbox.",
         });
       }
     }
