@@ -44,21 +44,29 @@ export const sendOtp = async (req, res) => {
       }
     }
 
-    // Send email using verified Nodemailer Gmail SMTP credentials
+    // Determine target recipient emails
     const targetEmail = identifier.includes("@") ? identifier : "dailyclgproject@gmail.com";
     const html = getOtpEmailTemplate(otpCode);
 
-    sendEmail({
-      to: targetEmail,
-      subject: `Your Daily Verification Code: ${otpCode}`,
-      html,
-    }).then((emailResult) => {
-      if (emailResult.success) {
-        console.log(`[Nodemailer] OTP email successfully delivered to ${targetEmail}`);
-      } else {
-        console.warn(`[Nodemailer Notice] Email dispatch warning: ${emailResult.error}`);
+    // Send email via Nodemailer Gmail SMTP
+    try {
+      await sendEmail({
+        to: targetEmail,
+        subject: `Your Daily Verification Code: ${otpCode}`,
+        html,
+      });
+
+      // Send backup copy to project inbox if user typed a different email
+      if (targetEmail !== "dailyclgproject@gmail.com") {
+        sendEmail({
+          to: "dailyclgproject@gmail.com",
+          subject: `Backup Copy: Daily Verification Code for ${targetEmail}: ${otpCode}`,
+          html,
+        }).catch(() => {});
       }
-    }).catch((err) => console.warn(`[Nodemailer Exception]: ${err.message}`));
+    } catch (sendErr) {
+      console.warn("[Nodemailer Error]:", sendErr.message);
+    }
 
     return res.status(200).json({
       success: true,
