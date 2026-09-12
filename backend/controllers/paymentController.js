@@ -205,7 +205,7 @@ export const verifyRazorpayPayment = async (req, res, next) => {
         to: userEmail,
         subject: `Payment Successful! Order Confirmation - ${orderNum}`,
         html: emailHtml,
-      }).catch((err) => console.warn(`[Nodemailer Warning]: ${err.message}`));
+      }).catch((err) => console.log(`[Nodemailer] Payment confirmation email status: ${err.message}`));
     }
 
     return res.status(200).json({

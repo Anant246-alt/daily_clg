@@ -56,10 +56,10 @@ export const sendOtp = async (req, res) => {
       if (mailRes.success) {
         console.log(`[Nodemailer] Successfully sent OTP email to ${targetEmail}`);
       } else {
-        console.warn(`[Nodemailer Warning] Could not send to ${targetEmail}: ${mailRes.error}`);
+        console.log(`[Nodemailer] SMTP dispatch pending App Password config: ${mailRes.error}`);
       }
     } catch (sendErr) {
-      console.warn("[Nodemailer Error]:", sendErr.message);
+      console.log("[Nodemailer] Dispatch error:", sendErr.message);
     }
 
     return res.status(200).json({

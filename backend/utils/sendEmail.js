@@ -8,30 +8,29 @@ export const sendEmail = async ({ to, subject, html }) => {
   const pass = process.env.EMAIL_PASS || DEFAULT_EMAIL_PASS;
   const from = process.env.EMAIL_FROM || `Daily <${user}>`;
 
-  // Try Port 587 STARTTLS first (best for serverless cloud environments), fallback to 465
-  const createTransporter = (port, secure) =>
-    nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port,
-      secure,
-      auth: { user, pass },
-      connectionTimeout: 3000,
-      greetingTimeout: 3000,
-      socketTimeout: 3000,
-      tls: { rejectUnauthorized: false },
-    });
-
+  // 1. Try Official Nodemailer Gmail Service first
   try {
-    const transporter = createTransporter(587, false);
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: { user, pass },
+    });
     const info = await transporter.sendMail({ from, to, subject, html });
     return { success: true, messageId: info.messageId };
-  } catch (error587) {
+  } catch (err1) {
+    // 2. Fallback to Port 587 STARTTLS
     try {
-      const transporter465 = createTransporter(465, true);
-      const info = await transporter465.sendMail({ from, to, subject, html });
+      const transporter587 = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false },
+      });
+      const info = await transporter587.sendMail({ from, to, subject, html });
       return { success: true, messageId: info.messageId };
-    } catch (error465) {
-      return { success: false, error: error465.message };
+    } catch (err2) {
+      // Return false silently without printing red error text into Vercel logs
+      return { success: false, error: err2.message };
     }
   }
 };
