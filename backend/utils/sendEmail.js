@@ -24,17 +24,13 @@ export const sendEmail = async ({ to, subject, html }) => {
   try {
     const transporter = createTransporter(587, false);
     const info = await transporter.sendMail({ from, to, subject, html });
-    console.log(`[Nodemailer Success 587] Email sent to ${to}: ${info.messageId}`);
     return { success: true, messageId: info.messageId };
   } catch (error587) {
-    console.warn(`[Nodemailer Notice 587] ${error587.message}, trying port 465...`);
     try {
       const transporter465 = createTransporter(465, true);
       const info = await transporter465.sendMail({ from, to, subject, html });
-      console.log(`[Nodemailer Success 465] Email sent to ${to}: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
     } catch (error465) {
-      console.error(`[Nodemailer Error] Failed to send email to ${to}:`, error465.message);
       return { success: false, error: error465.message };
     }
   }
