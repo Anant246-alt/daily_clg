@@ -51,16 +51,16 @@ export const sendOtp = async (req, res) => {
     const html = getOtpEmailTemplate(otpCode);
     
     // Await sendEmail so Nodemailer completes dispatching to user's Gmail inbox
-    try {
-      const mailRes = await sendEmail({ to: targetEmail, subject: `Your Daily Verification Code: ${otpCode}`, html });
-      if (mailRes.success) {
-        console.log(`[Nodemailer] Successfully sent OTP email to ${targetEmail}`);
-      } else {
-        console.log(`[Nodemailer] SMTP dispatch pending App Password config: ${mailRes.error}`);
-      }
-    } catch (sendErr) {
-      console.log("[Nodemailer] Dispatch error:", sendErr.message);
+    const mailRes = await sendEmail({ to: targetEmail, subject: `Your Daily Verification Code: ${otpCode}`, html });
+    if (!mailRes.success) {
+      console.log(`[Nodemailer Failed] Could not send to ${targetEmail}: ${mailRes.error}`);
+      return res.status(400).json({
+        success: false,
+        message: `Failed to send email to ${targetEmail}: ${mailRes.error}. Please update EMAIL_PASS in Vercel with a valid 16-character Gmail App Password.`,
+      });
     }
+
+    console.log(`[Nodemailer Success] Successfully sent OTP email to ${targetEmail}`);
 
     return res.status(200).json({
       success: true,
