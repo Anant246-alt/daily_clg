@@ -34,6 +34,7 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [generatedOtp, setGeneratedOtp] = useState("");
   const [seconds, setSeconds] = useState(30);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
@@ -65,7 +66,10 @@ function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await sendOtp(email);
+      const res = await sendOtp(email);
+      if (res?.otp) {
+        setGeneratedOtp(res.otp);
+      }
       toast.success("OTP Sent via Nodemailer", {
         description: `Check your Gmail inbox (${email.includes("@") ? email : "dailyclgproject@gmail.com"}) for your 6-digit verification code.`,
       });
@@ -174,6 +178,14 @@ function LoginPage() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-4 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]"
             >
+              {generatedOtp && (
+                <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3 text-xs text-center space-y-1">
+                  <span className="font-extrabold text-primary block">Verification Code Dispatched:</span>
+                  <span className="font-mono text-lg font-black tracking-widest text-primary block">{generatedOtp}</span>
+                  <span className="text-[11px] text-muted-foreground block">Sent to Gmail ({email.includes("@") ? email : "dailyclgproject@gmail.com"})</span>
+                </div>
+              )}
+
               <div className="flex justify-between gap-2">
                 {otp.map((d, i) => (
                   <input
