@@ -14,7 +14,7 @@ const generateToken = (id, email) => {
 };
 
 /**
- * Sends 6-digit OTP code via Nodemailer & generates HMAC signature for Vercel serverless verification
+ * Sends 6-digit OTP code via Nodemailer & generates HMAC signature for strict stateless verification
  */
 export const sendOtp = async (req, res) => {
   try {
@@ -26,49 +26,59 @@ export const sendOtp = async (req, res) => {
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    // Create HMAC verification signature (works statelessly across Vercel serverless instances)
+    // Create HMAC verification signature (strictly matches ONLY the exact generated 6-digit code)
     const hmacSignature = crypto
       .createHmac("sha256", SECRET)
       .update(`${identifier}:${otpCode}`)
       .digest("hex");
 
-    // Also store in MongoDB Atlas if connected
+    // Store in MongoDB Atlas if connected
     connectDB().then(async () => {
       if (mongoose.connection.readyState >= 1) {
         try {
           await Otp.deleteMany({ email: identifier });
           await Otp.create({ email: identifier, otp: otpCode, expiresAt: new Date(expiresAt) });
           await Otp.create({ email: "dailyclgproject@gmail.com", otp: otpCode, expiresAt: new Date(expiresAt) });
+          console.log(`[MongoDB Atlas] Saved strict OTP ${otpCode} for ${identifier}`);
         } catch {
           /* ignore db error */
         }
       }
     }).catch(() => {});
 
-    // Dispatch Email via Nodemailer asynchronously
+    // Dispatch Email via Nodemailer
     const targetEmail = identifier.includes("@") ? identifier : "dailyclgproject@gmail.com";
     const html = getOtpEmailTemplate(otpCode);
-    sendEmail({ to: targetEmail, subject: `Your Daily Verification Code: ${otpCode}`, html }).catch(() => {});
+    
+    // Await sendEmail so Nodemailer completes dispatching to user's Gmail inbox
+    try {
+      const mailRes = await sendEmail({ to: targetEmail, subject: `Your Daily Verification Code: ${otpCode}`, html });
+      if (mailRes.success) {
+        console.log(`[Nodemailer] Successfully sent OTP email to ${targetEmail}`);
+      } else {
+        console.warn(`[Nodemailer Warning] Could not send to ${targetEmail}: ${mailRes.error}`);
+      }
+    } catch (sendErr) {
+      console.warn("[Nodemailer Error]:", sendErr.message);
+    }
 
     return res.status(200).json({
       success: true,
       email: targetEmail,
-      otp: otpCode,
       hashToken: hmacSignature,
-      message: `Verification code dispatched to ${targetEmail}`,
+      message: `Verification code sent to ${targetEmail} via Nodemailer`,
     });
   } catch (error) {
     console.error("[sendOtp Controller Error]:", error);
-    return res.status(200).json({
-      success: true,
-      otp: "187984",
-      message: "Verification code generated",
+    return res.status(400).json({
+      success: false,
+      message: "Failed to generate OTP code",
     });
   }
 };
 
 /**
- * Verifies 6-digit OTP code statelessly or via MongoDB Atlas
+ * Strictly verifies 6-digit OTP code against HMAC signature & MongoDB Atlas
  */
 export const verifyOtp = async (req, res) => {
   try {
@@ -81,7 +91,7 @@ export const verifyOtp = async (req, res) => {
 
     let isValid = false;
 
-    // 1. HMAC Verification (100% Stateless & works across Vercel serverless containers!)
+    // 1. Strict Cryptographic HMAC Verification (Matches ONLY the exact code dispatched to email)
     if (hashToken) {
       const expectedHmac = crypto
         .createHmac("sha256", SECRET)
@@ -89,6 +99,7 @@ export const verifyOtp = async (req, res) => {
         .digest("hex");
       if (expectedHmac === hashToken) {
         isValid = true;
+        console.log(`[HMAC Verification] Strict match for ${identifier}`);
       }
     }
 
@@ -104,6 +115,7 @@ export const verifyOtp = async (req, res) => {
           if (record) {
             isValid = true;
             await Otp.deleteOne({ _id: record._id });
+            console.log(`[MongoDB Verification] Strict match for ${identifier}`);
           }
         }
       } catch {
@@ -111,15 +123,11 @@ export const verifyOtp = async (req, res) => {
       }
     }
 
-    // 3. Fallback for 6-digit OTP codes during serverless container migration
-    if (!isValid && /^\d{6}$/.test(otp)) {
-      isValid = true;
-    }
-
+    // STRICT REJECTION: Reject all invalid / dummy codes like 123456 or 111111
     if (!isValid) {
       return res.status(200).json({
         success: false,
-        message: "Invalid or expired OTP code. Please enter the exact 6-digit code.",
+        message: "Invalid or expired OTP code. Dummy codes like 123456 are rejected. Please check your email inbox for the exact 6-digit code.",
       });
     }
 
