@@ -67,7 +67,15 @@ export const updateProfile = async (req, res, next) => {
       avatar: avatar !== undefined ? avatar : userDoc ? userDoc.avatar : req.user.avatar || "",
     };
 
-    updateDocument("users", "email", updatedUserObj.email, updatedUserObj) || insertDocument("users", updatedUserObj);
+    const updated =
+      updateDocument("users", "id", userId, updatedUserObj) ||
+      updateDocument("users", "_id", userId, updatedUserObj) ||
+      updateDocument("users", "email", req.user.email, updatedUserObj) ||
+      updateDocument("users", "email", updatedUserObj.email, updatedUserObj);
+
+    if (!updated) {
+      insertDocument("users", updatedUserObj);
+    }
 
     return res.status(200).json({
       success: true,

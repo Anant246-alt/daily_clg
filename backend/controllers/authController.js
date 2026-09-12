@@ -6,6 +6,7 @@ import { connectDB } from "../config/db.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { getOtpEmailTemplate } from "../utils/emailTemplates.js";
 import mongoose from "mongoose";
+import { readCollection, insertDocument } from "../config/fileDb.js";
 
 const SECRET = process.env.JWT_SECRET || "daily_jwt_secret_key_2026_super_secure";
 
@@ -131,45 +132,80 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    // Get or Create User
+    // Get or Create User with Stable Deterministic ID & Persistent Profile Retrieval
+    const cleanId = identifier.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
+    const stableUserId = `u1_${cleanId}`;
     let user = null;
+
     try {
       if (mongoose.connection.readyState >= 1) {
         user = await User.findOne({ $or: [{ email: identifier }, { phone: identifier }] });
-        if (!user) {
-          const nameFromEmail = identifier.includes("@") ? identifier.split("@")[0] : "User";
-          const formattedName = nameFromEmail
-            .replace(/[._]/g, " ")
-            .replace(/\b\w/g, (l) => l.toUpperCase());
-
-          user = await User.create({
-            email: identifier.includes("@") ? identifier : `user_${Date.now()}@daily.com`,
-            name: formattedName || "Aarav Mehta",
-            phone: identifier.includes("@") ? "+91 98765 43210" : identifier,
-          });
-        }
       }
     } catch {
       /* ignore db error */
     }
 
-    if (!user) {
-      user = {
-        _id: "u1_" + Date.now(),
-        id: "u1",
-        name: identifier.includes("@") ? identifier.split("@")[0] : "User",
-        email: identifier.includes("@") ? identifier : "dailyclgproject@gmail.com",
-        phone: identifier,
-      };
+    const diskUsers = readCollection("users", []);
+    const diskUser = diskUsers.find(
+      (u) =>
+        (u.email && u.email.toLowerCase() === identifier) ||
+        (u.phone && u.phone === identifier) ||
+        u.id === stableUserId ||
+        u._id === stableUserId
+    );
+
+    if (!user && diskUser) {
+      user = diskUser;
     }
 
-    const token = generateToken(user._id || user.id, user.email);
+    if (!user) {
+      const nameFromEmail = identifier.includes("@") ? identifier.split("@")[0] : "User";
+      const formattedName = nameFromEmail
+        .replace(/[._]/g, " ")
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+
+      const newUserObj = {
+        _id: stableUserId,
+        id: stableUserId,
+        name: formattedName || "Aarav Mehta",
+        email: identifier.includes("@") ? identifier : `user_${Date.now()}@daily.com`,
+        phone: identifier.includes("@") ? "+91 98765 43210" : identifier,
+        avatar: "",
+      };
+
+      try {
+        if (mongoose.connection.readyState >= 1) {
+          user = await User.create(newUserObj);
+        }
+      } catch {
+        /* ignore db error */
+      }
+
+      if (!user) {
+        user = newUserObj;
+      }
+
+      insertDocument("users", user);
+    } else {
+      if (diskUser) {
+        user = {
+          ...user,
+          name: diskUser.name || user.name,
+          phone: diskUser.phone || user.phone,
+          email: diskUser.email || user.email,
+          avatar: diskUser.avatar || user.avatar || "",
+        };
+      }
+    }
+
+    const userIdToUse = user.id || user._id || stableUserId;
+    const token = generateToken(userIdToUse, user.email);
 
     return res.status(200).json({
       success: true,
       token,
       user: {
-        id: user.id || user._id,
+        id: userIdToUse,
         name: user.name,
         email: user.email,
         phone: user.phone || "+91 98765 43210",

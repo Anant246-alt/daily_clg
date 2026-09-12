@@ -50,20 +50,52 @@ const fallbackOrders = [
 
 export const getOrders = async (req, res, next) => {
   try {
-    const userId = req.user._id || req.user.id;
-    let orders = [];
+    const userId = String(req.user._id || req.user.id || "").toLowerCase();
+    const userEmail = String(req.user.email || "").toLowerCase();
+    const userPhone = String(req.user.phone || "").replace(/\D/g, "");
+
+    let dbOrders = [];
     try {
-      orders = await Order.find({ user: userId }).sort({ createdAt: -1 }).select("-__v");
+      dbOrders = await Order.find({
+        $or: [
+          { user: userId },
+          { userEmail: userEmail },
+          { user: userEmail },
+          { userPhone: userPhone },
+        ],
+      })
+        .sort({ createdAt: -1 })
+        .select("-__v");
     } catch (err) {
       console.warn("[Orders] DB fetch failed");
     }
 
-    if (!orders || orders.length === 0) {
-      const diskOrders = readCollection("orders", fallbackOrders);
-      orders = diskOrders.filter((o) => !o.user || o.user === userId || o.user === req.user.id);
-      if (orders.length === 0) orders = diskOrders;
+    const diskOrders = readCollection("orders", fallbackOrders);
+    const matchedDiskOrders = diskOrders.filter((o) => {
+      const oUser = String(o.user || "").toLowerCase();
+      const oEmail = String(o.userEmail || o.email || "").toLowerCase();
+      const oPhone = String(o.userPhone || o.phone || "").replace(/\D/g, "");
+
+      return (
+        (userId && (oUser === userId || oUser.includes(userId))) ||
+        (userEmail && (oUser === userEmail || oEmail === userEmail)) ||
+        (userPhone && userPhone.length >= 10 && (oUser === userPhone || oPhone === userPhone))
+      );
+    });
+
+    const combinedMap = new Map();
+    [...dbOrders, ...matchedDiskOrders].forEach((o) => {
+      const key = o.id || o.number;
+      if (key && !combinedMap.has(key)) {
+        combinedMap.set(key, o);
+      }
+    });
+
+    let finalOrders = Array.from(combinedMap.values());
+    if (finalOrders.length === 0) {
+      finalOrders = diskOrders.length > 0 ? diskOrders : fallbackOrders;
     }
-    return res.status(200).json(orders);
+    return res.status(200).json(finalOrders);
   } catch (error) {
     next(error);
   }
@@ -98,6 +130,8 @@ export const getOrderById = async (req, res, next) => {
 export const createOrder = async (req, res, next) => {
   try {
     const userId = req.user._id || req.user.id;
+    const userEmail = req.user.email || "dailyclgproject@gmail.com";
+    const userPhone = req.user.phone || "";
     const {
       total,
       paymentMethod,
@@ -125,6 +159,8 @@ export const createOrder = async (req, res, next) => {
 
     const newOrderData = {
       user: userId,
+      userEmail,
+      userPhone,
       id: orderId,
       number: orderNum,
       date: dateStr,

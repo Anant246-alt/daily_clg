@@ -143,6 +143,8 @@ export const verifyRazorpayPayment = async (req, res, next) => {
 
     const newOrderData = {
       user: userId,
+      userEmail: userEmail || req.user?.email || "dailyclgproject@gmail.com",
+      userPhone: phone || req.user?.phone || "",
       id: orderId,
       number: orderNum,
       date: dateStr,
