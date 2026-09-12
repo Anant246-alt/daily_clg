@@ -178,13 +178,7 @@ function LoginPage() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-4 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]"
             >
-              {generatedOtp && (
-                <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3 text-xs text-center space-y-1">
-                  <span className="font-extrabold text-primary block">Verification Code Dispatched:</span>
-                  <span className="font-mono text-lg font-black tracking-widest text-primary block">{generatedOtp}</span>
-                  <span className="text-[11px] text-muted-foreground block">Sent to Gmail ({email.includes("@") ? email : "dailyclgproject@gmail.com"})</span>
-                </div>
-              )}
+
 
               <div className="flex justify-between gap-2">
                 {otp.map((d, i) => (
