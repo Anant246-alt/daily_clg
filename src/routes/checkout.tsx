@@ -147,10 +147,24 @@ function CheckoutPage() {
     }
   };
 
-  /** Step 1: Trigger Official Razorpay Gateway directly on Place Order */
+  /** Step 1: Trigger Razorpay Payment Confirmation OTP and Open Modal */
   const handlePlaceOrder = async () => {
     if (method === "razorpay") {
-      triggerRazorpayGateway();
+      const cleanPhone = (phone || user?.phone || "+91 98765 43210").trim();
+      setModalPhone(cleanPhone);
+      setPaymentOtp("");
+      setSendingSms(true);
+      setShowOtpModal(true);
+      setOtpStep("verify");
+
+      try {
+        await sendOtp(cleanPhone);
+        toast.success(`Razorpay Payment OTP code sent to ${cleanPhone}`);
+      } catch (err) {
+        console.warn("[Razorpay OTP Notice]:", err);
+      } finally {
+        setSendingSms(false);
+      }
       return;
     }
 
@@ -355,6 +369,91 @@ function CheckoutPage() {
             </button>
           </div>
         </div>
+
+        {/* Razorpay Payment Confirmation Modal */}
+        {showOtpModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-md space-y-5 rounded-3xl border border-border bg-card p-6 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2 font-extrabold text-foreground">
+                  <span className="grid size-8 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <FiLock className="size-4" />
+                  </span>
+                  Razorpay Payment Confirmation
+                </div>
+                <button
+                  onClick={() => setShowOtpModal(false)}
+                  className="rounded-full p-1 text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+                >
+                  <FiX className="size-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-foreground space-y-1.5">
+                  <div className="flex items-center justify-between font-extrabold text-emerald-600 dark:text-emerald-400">
+                    <span className="flex items-center gap-1.5"><FiSmartphone className="size-4" /> Payment OTP Sent to {modalPhone}</span>
+                    <span className="rounded-lg bg-emerald-500/20 px-2 py-0.5 font-mono text-xs text-emerald-700 dark:text-emerald-300 font-bold">
+                      Dispatched
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Check your mobile phone's SMS text messages or Gmail inbox for your 6-digit payment confirmation code.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <h3 className="text-sm font-bold text-foreground">Enter 6-Digit Payment Confirmation OTP:</h3>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={paymentOtp}
+                    onChange={(e) => setPaymentOtp(e.target.value.replace(/\D/g, ""))}
+                    placeholder="Enter 6-digit OTP"
+                    className="w-full rounded-2xl border border-border bg-background px-4 py-3.5 text-center text-xl font-mono font-black tracking-widest outline-none focus:border-primary focus:ring-2 focus:ring-ring/30"
+                  />
+                </div>
+
+                <button
+                  onClick={handleVerifyPaymentOtp}
+                  disabled={otpVerifying || paymentOtp.length !== 6}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-md disabled:opacity-50 cursor-pointer hover:opacity-90 transition"
+                >
+                  {otpVerifying ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : <FiCheckCircle />}
+                  Verify & Confirm Payment
+                </button>
+
+                <div className="relative my-2 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
+                  <span className="relative bg-card px-2 text-[11px] text-muted-foreground uppercase font-bold">or</span>
+                </div>
+
+                <button
+                  onClick={triggerRazorpayGateway}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-secondary py-3 text-xs font-bold text-secondary-foreground hover:bg-secondary/80 cursor-pointer"
+                >
+                  <FiZap /> Run Official Razorpay Gateway SDK Overlay
+                </button>
+
+                <div className="flex justify-between items-center text-xs pt-1">
+                  <button
+                    onClick={() => setShowOtpModal(false)}
+                    className="text-muted-foreground hover:text-foreground font-semibold cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSendSmsOtp}
+                    disabled={sendingSms}
+                    className="text-primary font-bold hover:underline cursor-pointer"
+                  >
+                    {sendingSms ? "Resending..." : "🔄 Resend Payment OTP"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </PageTransition>
     </AppShell>
   );
