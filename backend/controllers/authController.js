@@ -48,15 +48,23 @@ export const sendOtp = async (req, res) => {
       }
     }).catch(() => {});
 
-    // 1. Dispatch Real SMS Text Message to mobile phone number
+    // 1. Dispatch Real SMS Text Message ONLY if phone number is supplied
     const targetPhone = phone || (rawInput.match(/^\+?\d[\d\s-]{7,}$/) ? rawInput : "");
     let smsResult = { success: false };
     if (targetPhone) {
       smsResult = await sendSmsOtp(targetPhone, otpCode);
       console.log(`[SMS Dispatch] Phone: ${targetPhone}, Success: ${smsResult.success}, Provider: ${smsResult.provider || "simulated"}`);
+      
+      return res.status(200).json({
+        success: true,
+        phone: targetPhone,
+        hashToken: hmacSignature,
+        smsDispatched: smsResult.success,
+        message: `OTP Code sent via SMS text message to ${targetPhone}`,
+      });
     }
 
-    // 2. Dispatch Email via Nodemailer
+    // 2. Dispatch Email via Nodemailer ONLY if identifier is an email address
     const targetEmail = identifier.includes("@") ? identifier : "dailyclgproject@gmail.com";
     const html = getOtpEmailTemplate(otpCode);
     
@@ -66,12 +74,8 @@ export const sendOtp = async (req, res) => {
     return res.status(200).json({
       success: true,
       email: targetEmail,
-      phone: targetPhone,
       hashToken: hmacSignature,
-      smsDispatched: smsResult.success,
-      message: targetPhone 
-        ? `Verification code sent via SMS text message to ${targetPhone} & Email`
-        : `Verification code sent to ${targetEmail} via Nodemailer`,
+      message: `Verification code sent to ${targetEmail} via Nodemailer`,
     });
   } catch (error) {
     console.error("[sendOtp Controller Error]:", error);
