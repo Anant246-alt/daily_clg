@@ -2,6 +2,7 @@ import salad from "@/assets/salad.jpg";
 import sandwich from "@/assets/sandwich.jpg";
 import icedtea from "@/assets/icedtea.jpg";
 import footlong from "@/assets/footlong.jpg";
+import clubSandwich from "@/assets/club_sandwich.jpg";
 
 /** Pure Vegetarian Catalogue */
 export type Product = {
@@ -142,8 +143,8 @@ export const products: Product[] = [
     id: "p10",
     name: "Classic Veg Club Sandwich",
     category: "sandwiches",
-    image: sandwich,
-    gallery: [sandwich, salad, footlong],
+    image: clubSandwich,
+    gallery: [clubSandwich, sandwich, salad],
     price: 219,
     mrp: 279,
     rating: 4.5,
