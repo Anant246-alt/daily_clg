@@ -74,7 +74,11 @@ function CheckoutPage() {
   /** Run Official Razorpay Gateway Modal Directly on Given Number */
   const triggerRazorpayGateway = async () => {
     setLoading(true);
-    const cleanPhone = (modalPhone || phone || user?.phone || "").replace(/\D/g, "") || "9876543210";
+    let digitsOnly = (modalPhone || phone || user?.phone || "").replace(/\D/g, "");
+    if (digitsOnly.length > 10) {
+      digitsOnly = digitsOnly.slice(-10);
+    }
+    const cleanPhone = digitsOnly.length === 10 ? digitsOnly : "9876543210";
 
     const isLoaded = await loadRazorpayScript();
     if (!isLoaded) {
@@ -89,14 +93,13 @@ function CheckoutPage() {
       const orderData = await createPaymentOrder(cart.total, "INR");
 
       // 2. Configure Official Razorpay Checkout Options with User's Given Mobile Phone Number
-      const options = {
+      const options: any = {
         key: orderData?.keyId || "rzp_test_TLXgSkf5lA607j",
         amount: orderData?.amount || Math.round(cart.total * 100),
         currency: orderData?.currency || "INR",
         name: "Daily Food Delivery",
         description: "Payment for Order",
         image: "https://daily-clg-swart.vercel.app/logo.png",
-        order_id: orderData?.orderId,
         handler: async function (response: any) {
           setLoading(true);
           try {
@@ -136,6 +139,10 @@ function CheckoutPage() {
           },
         },
       };
+
+      if (orderData?.orderId && !orderData.orderId.startsWith("order_test_")) {
+        options.order_id = orderData.orderId;
+      }
 
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
