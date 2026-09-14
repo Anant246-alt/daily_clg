@@ -34,7 +34,6 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [generatedOtp, setGeneratedOtp] = useState("");
   const [seconds, setSeconds] = useState(30);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
@@ -66,12 +65,9 @@ function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await sendOtp(email);
-      if (res?.otp) {
-        setGeneratedOtp(res.otp);
-      }
-      toast.success("OTP Sent via Nodemailer", {
-        description: `Check your Gmail inbox (${email.includes("@") ? email : "dailyclgproject@gmail.com"}) for your 6-digit verification code.`,
+      await sendOtp(email);
+      toast.success("OTP Verification Code Sent", {
+        description: `Check your SMS text messages and Gmail inbox for your 6-digit verification code.`,
       });
     } catch (err: any) {
       console.warn("[Auth Warning] OTP call:", err);

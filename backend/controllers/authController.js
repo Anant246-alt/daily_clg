@@ -67,11 +67,10 @@ export const sendOtp = async (req, res) => {
       success: true,
       email: targetEmail,
       phone: targetPhone,
-      otpCode: otpCode,
       hashToken: hmacSignature,
       smsDispatched: smsResult.success,
       message: targetPhone 
-        ? `SMS OTP Code ${otpCode} dispatched to ${targetPhone} & Email sent to ${targetEmail}`
+        ? `Verification code sent via SMS text message to ${targetPhone} & Email`
         : `Verification code sent to ${targetEmail} via Nodemailer`,
     });
   } catch (error) {
