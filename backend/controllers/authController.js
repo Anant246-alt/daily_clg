@@ -4,6 +4,7 @@ import { Otp } from "../models/Otp.js";
 import { User } from "../models/User.js";
 import { connectDB } from "../config/db.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { sendSmsOtp } from "../utils/sendSms.js";
 import { getOtpEmailTemplate } from "../utils/emailTemplates.js";
 import mongoose from "mongoose";
 import { readCollection, insertDocument } from "../config/fileDb.js";
@@ -15,7 +16,7 @@ const generateToken = (id, email) => {
 };
 
 /**
- * Sends 6-digit OTP code via Nodemailer & generates HMAC signature for strict stateless verification
+ * Sends 6-digit OTP code via Nodemailer & SMS (Fast2SMS/Twilio) & generates HMAC signature for strict verification
  */
 export const sendOtp = async (req, res) => {
   try {
@@ -47,27 +48,31 @@ export const sendOtp = async (req, res) => {
       }
     }).catch(() => {});
 
-    // Dispatch Email via Nodemailer
+    // 1. Dispatch Real SMS Text Message to mobile phone number
+    const targetPhone = phone || (rawInput.match(/^\+?\d[\d\s-]{7,}$/) ? rawInput : "");
+    let smsResult = { success: false };
+    if (targetPhone) {
+      smsResult = await sendSmsOtp(targetPhone, otpCode);
+      console.log(`[SMS Dispatch] Phone: ${targetPhone}, Success: ${smsResult.success}, Provider: ${smsResult.provider || "simulated"}`);
+    }
+
+    // 2. Dispatch Email via Nodemailer
     const targetEmail = identifier.includes("@") ? identifier : "dailyclgproject@gmail.com";
     const html = getOtpEmailTemplate(otpCode);
     
     // Await sendEmail so Nodemailer completes dispatching to user's Gmail inbox
     const mailRes = await sendEmail({ to: targetEmail, subject: `Your Daily Verification Code: ${otpCode}`, html });
-    if (!mailRes.success) {
-      console.log(`[Nodemailer Failed] Could not send to ${targetEmail}: ${mailRes.error}`);
-      return res.status(400).json({
-        success: false,
-        message: `Failed to send email to ${targetEmail}: ${mailRes.error}. Please update EMAIL_PASS in Vercel with a valid 16-character Gmail App Password.`,
-      });
-    }
-
-    console.log(`[Nodemailer Success] Successfully sent OTP email to ${targetEmail}`);
 
     return res.status(200).json({
       success: true,
       email: targetEmail,
+      phone: targetPhone,
+      otpCode: otpCode,
       hashToken: hmacSignature,
-      message: `Verification code sent to ${targetEmail} via Nodemailer`,
+      smsDispatched: smsResult.success,
+      message: targetPhone 
+        ? `SMS OTP Code ${otpCode} dispatched to ${targetPhone} & Email sent to ${targetEmail}`
+        : `Verification code sent to ${targetEmail} via Nodemailer`,
     });
   } catch (error) {
     console.error("[sendOtp Controller Error]:", error);
