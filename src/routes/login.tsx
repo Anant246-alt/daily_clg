@@ -110,7 +110,7 @@ function LoginPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8 flex flex-col items-center gap-3 text-center"
         >
-          <div className="grid size-20 place-items-center rounded-3xl bg-card border border-border p-2 shadow-[var(--shadow-soft)] overflow-hidden">
+          <div className="flex h-24 w-24 items-center justify-center rounded-3xl bg-card border border-border p-2.5 shadow-[var(--shadow-soft)] overflow-hidden">
             <img src="/logo.png" alt="Daily Logo" className="size-full object-contain" />
           </div>
           <h1 className="text-2xl font-black sm:text-3xl">
@@ -118,8 +118,8 @@ function LoginPage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             {step === "email"
-              ? "Sign in with a one-time password sent via Nodemailer to your email."
-              : `We sent a 6-digit verification code via Nodemailer to ${email}`}
+              ? "Sign in with a one-time verification code."
+              : `We sent a 6-digit verification code to ${email}`}
           </p>
         </motion.div>
 
