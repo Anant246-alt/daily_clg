@@ -110,9 +110,9 @@ function LoginPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8 flex flex-col items-center gap-3 text-center"
         >
-          <span className="grid size-16 place-items-center rounded-3xl bg-primary text-3xl font-black text-primary-foreground shadow-[var(--shadow-soft)]">
-            D
-          </span>
+          <div className="grid size-20 place-items-center rounded-3xl bg-card border border-border p-2 shadow-[var(--shadow-soft)] overflow-hidden">
+            <img src="/logo.png" alt="Daily Logo" className="size-full object-contain" />
+          </div>
           <h1 className="text-2xl font-black sm:text-3xl">
             {step === "email" ? "Welcome back" : "Verify your account"}
           </h1>

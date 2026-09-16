@@ -151,9 +151,9 @@ export function AppShell({
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="grid size-10 place-items-center rounded-2xl bg-primary text-lg font-black text-primary-foreground">
-                    D
-                  </span>
+                  <div className="grid size-10 place-items-center rounded-2xl bg-card border border-border p-1 overflow-hidden shrink-0">
+                    <img src="/logo.png" alt="Daily Logo" className="size-full object-contain" />
+                  </div>
                   <div>
                     <p className="font-extrabold leading-tight">Daily</p>
                     <p className="text-xs text-muted-foreground">Fresh food, fast</p>

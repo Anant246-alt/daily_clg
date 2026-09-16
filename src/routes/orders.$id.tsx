@@ -239,9 +239,9 @@ TOTAL PAID:     ₹${order.total.toFixed(2)}
                 <div className="flex flex-col sm:flex-row justify-between gap-4 border-b border-border pb-5">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="grid size-8 place-items-center rounded-xl bg-primary text-primary-foreground font-black text-sm">
-                        D
-                      </span>
+                      <div className="grid size-10 place-items-center rounded-xl bg-card border border-border p-1 overflow-hidden shrink-0">
+                        <img src="/logo.png" alt="Daily Logo" className="size-full object-contain" />
+                      </div>
                       <h2 className="text-xl font-black tracking-tight text-primary">DAILY FOOD DELIVERY</h2>
                     </div>
                     <p className="text-xs text-muted-foreground">FSSAI Lic No: 11223344556677</p>
