@@ -13,6 +13,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { CartProvider } from "@/context/CartContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import { OrderProvider } from "@/context/OrderContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -89,8 +90,10 @@ function RootComponent() {
           <CartProvider>
             <WishlistProvider>
               <OrderProvider>
-                <Outlet />
-                <Toaster position="top-center" richColors />
+                <NotificationProvider>
+                  <Outlet />
+                  <Toaster position="top-center" richColors />
+                </NotificationProvider>
               </OrderProvider>
             </WishlistProvider>
           </CartProvider>

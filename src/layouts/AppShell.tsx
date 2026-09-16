@@ -22,7 +22,7 @@ import {
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
-import { notifications } from "@/data/notifications";
+import { useNotifications } from "@/context/NotificationContext";
 import { greeting } from "@/utils/format";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +60,7 @@ export function AppShell({
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const unread = notifications.filter((n) => n.unread).length;
+  const { unreadCount: unread } = useNotifications();
 
   return (
     <div className="min-h-screen bg-background pb-24 lg:pb-10">
