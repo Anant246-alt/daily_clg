@@ -434,19 +434,7 @@ function CheckoutPage() {
                   Verify & Confirm Payment
                 </button>
 
-                <div className="relative my-2 flex items-center justify-center">
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-                  <span className="relative bg-card px-2 text-[11px] text-muted-foreground uppercase font-bold">or</span>
-                </div>
-
-                <button
-                  onClick={triggerRazorpayGateway}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-secondary py-3 text-xs font-bold text-secondary-foreground hover:bg-secondary/80 cursor-pointer"
-                >
-                  <FiZap /> Run Official Razorpay Gateway SDK Overlay
-                </button>
-
-                <div className="flex justify-between items-center text-xs pt-1">
+                <div className="flex justify-between items-center text-xs pt-2">
                   <button
                     onClick={() => setShowOtpModal(false)}
                     className="text-muted-foreground hover:text-foreground font-semibold cursor-pointer"

@@ -34,7 +34,17 @@ export const sendOtp = async (req, res) => {
       .update(`${identifier}:${otpCode}`)
       .digest("hex");
 
-    // Store in MongoDB Atlas if connected
+    // Store in File DB & MongoDB Atlas
+    try {
+      const currentOtps = readCollection("otps.json", []);
+      const cleanPhone = (phone || rawInput).replace(/\D/g, "");
+      const filtered = currentOtps.filter((o) => o.email !== identifier && o.phone !== cleanPhone);
+      filtered.push({ email: identifier, phone: cleanPhone, otp: otpCode, expiresAt });
+      insertDocument("otps.json", filtered, true);
+    } catch {
+      /* ignore file db error */
+    }
+
     connectDB().then(async () => {
       if (mongoose.connection.readyState >= 1) {
         try {
@@ -118,7 +128,8 @@ export const verifyOtp = async (req, res) => {
       try {
         await connectDB();
         if (mongoose.connection.readyState >= 1) {
-          let record = await Otp.findOne({ email: identifier, otp });
+          const rawPhone = identifier.replace(/\D/g, "");
+          let record = await Otp.findOne({ $or: [{ email: identifier }, { email: rawPhone }], otp });
           if (!record) {
             record = await Otp.findOne({ email: "dailyclgproject@gmail.com", otp });
           }
@@ -133,11 +144,30 @@ export const verifyOtp = async (req, res) => {
       }
     }
 
-    // STRICT REJECTION: Reject all invalid / dummy codes like 123456 or 111111
+    // 3. Check File DB fallback (otps.json)
+    if (!isValid) {
+      try {
+        const fileOtps = readCollection("otps.json", []);
+        const rawPhone = identifier.replace(/\D/g, "");
+        const matchedIndex = fileOtps.findIndex(
+          (o) => (o.email === identifier || o.phone === identifier || (o.phone && o.phone.replace(/\D/g, "") === rawPhone)) && String(o.otp) === String(otp)
+        );
+        if (matchedIndex !== -1) {
+          isValid = true;
+          fileOtps.splice(matchedIndex, 1);
+          insertDocument("otps.json", fileOtps, true);
+          console.log(`[File DB Verification] Strict match for ${identifier}`);
+        }
+      } catch {
+        /* ignore file db error */
+      }
+    }
+
+    // STRICT REJECTION: Reject all invalid / dummy codes
     if (!isValid) {
       return res.status(200).json({
         success: false,
-        message: "Invalid or expired OTP code. Dummy codes like 123456 are rejected. Please check your email inbox for the exact 6-digit code.",
+        message: "Invalid or expired OTP code. Please check your text messages or email inbox for the exact 6-digit code.",
       });
     }
 
