@@ -89,8 +89,8 @@ function CheckoutPage() {
     }
 
     try {
-      // 1. Create Razorpay Order via Backend Node.js SDK
-      const orderData = await createPaymentOrder(cart.total, "INR");
+      // 1. Create Razorpay Order via Backend Node.js SDK and trigger SMS text message OTP
+      const orderData = await createPaymentOrder(cart.total, cleanPhone);
 
       // 2. Configure Official Razorpay Checkout Options with User's Given Mobile Phone Number
       const options: any = {

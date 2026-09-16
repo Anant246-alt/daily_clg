@@ -6,9 +6,9 @@ import { api } from "./client";
  *   POST /api/payment/verify        -> { success, paymentStatus, orderId, paymentId }
  *   GET  /api/payment/status/:id    -> { success, paymentStatus, order }
  */
-export const createPaymentOrder = async (amount: number) => {
+export const createPaymentOrder = async (amount: number, phone?: string) => {
   try {
-    return (await api.post("/payment/create-order", { amount })).data;
+    return (await api.post("/payment/create-order", { amount, phone })).data;
   } catch {
     return { orderId: `rzp_${Date.now()}`, amount: amount * 100, currency: "INR", keyId: "rzp_test_TLXgSkf5lA607j" };
   }

@@ -5,6 +5,7 @@ import { Cart } from "../models/Cart.js";
 import { Notification } from "../models/Notification.js";
 import { Otp } from "../models/Otp.js";
 import { sendEmail } from "../utils/sendEmail.js";
+import { sendSmsOtp } from "../utils/sendSms.js";
 import { getOrderConfirmationTemplate } from "../utils/emailTemplates.js";
 import { readCollection, insertDocument } from "../config/fileDb.js";
 import mongoose from "mongoose";
@@ -15,9 +16,19 @@ import mongoose from "mongoose";
  */
 export const createRazorpayOrder = async (req, res, next) => {
   try {
-    const { amount, currency } = req.body;
+    const { amount, currency, phone } = req.body;
     const finalAmount = amount || 100;
     const keyId = (process.env.RAZORPAY_KEY_ID || "rzp_test_TLXgSkf5lA607j").replace(/[<>]/g, "").trim();
+
+    // Trigger real SMS text message to given phone number
+    if (phone) {
+      try {
+        await sendSmsOtp(phone, "123456");
+        console.log(`[Payment SMS] Dispatched SMS test OTP 123456 to ${phone}`);
+      } catch (smsErr) {
+        console.warn("[Payment SMS Error]:", smsErr.message);
+      }
+    }
 
     const razorpay = getRazorpayInstance();
     const options = {
