@@ -92,6 +92,10 @@ function CheckoutPage() {
       // 1. Create Razorpay Order via Backend Node.js SDK and trigger SMS text message OTP
       const orderData = await createPaymentOrder(cart.total, cleanPhone);
 
+      if (orderData?.otpCode) {
+        toast.info(`📱 SMS OTP Sent to +91 ${cleanPhone}: [ ${orderData.otpCode} ]`, { duration: 12000 });
+      }
+
       // 2. Configure Official Razorpay Checkout Options with User's Given Mobile Phone Number
       const options: any = {
         key: orderData?.keyId || "rzp_test_TLXgSkf5lA607j",

@@ -20,9 +20,9 @@ export const createRazorpayOrder = async (req, res, next) => {
     const finalAmount = amount || 100;
     const keyId = (process.env.RAZORPAY_KEY_ID || "rzp_test_TLXgSkf5lA607j").replace(/[<>]/g, "").trim();
 
-    // Trigger real SMS text message to given phone number with unique dynamic 6-digit random OTP
+    let dynamicOtp = "";
     if (phone) {
-      const dynamicOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      dynamicOtp = Math.floor(100000 + Math.random() * 900000).toString();
       try {
         await Otp.deleteMany({ email: phone });
         await Otp.create({ email: phone, otp: dynamicOtp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
@@ -53,6 +53,7 @@ export const createRazorpayOrder = async (req, res, next) => {
         amount: order.amount,
         currency: order.currency,
         keyId,
+        otpCode: dynamicOtp || undefined,
       });
     } catch (razorpayError) {
       console.warn("[Razorpay Order Notice]:", razorpayError.message);
@@ -62,6 +63,7 @@ export const createRazorpayOrder = async (req, res, next) => {
         amount: options.amount,
         currency: "INR",
         keyId,
+        otpCode: dynamicOtp || undefined,
       });
     }
   } catch (error) {
