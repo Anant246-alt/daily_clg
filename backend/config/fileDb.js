@@ -11,25 +11,28 @@ try {
   console.warn("[FileDB Notice] Local disk write restricted in serverless environment:", err.message);
 }
 
+global.memoryDb = global.memoryDb || {};
+
 export const readCollection = (collectionName, defaultData = []) => {
   const filePath = path.join(dbDir, `${collectionName}.json`);
   try {
-    if (!fs.existsSync(filePath)) {
-      return defaultData;
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, "utf-8");
+      return JSON.parse(data || "[]");
     }
-    const data = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(data || "[]");
   } catch (err) {
-    return defaultData;
+    /* fallback to memory */
   }
+  return global.memoryDb[collectionName] || defaultData;
 };
 
 export const writeCollection = (collectionName, data) => {
+  global.memoryDb[collectionName] = data;
   try {
     const filePath = path.join(dbDir, `${collectionName}.json`);
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
   } catch (err) {
-    console.warn(`[FileDB Notice] Write skipped in read-only environment: ${err.message}`);
+    // Memory cache active for serverless read-only environment
   }
 };
 

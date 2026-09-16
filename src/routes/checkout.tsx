@@ -49,14 +49,14 @@ function CheckoutPage() {
   const { user } = useAuth();
   const { addresses, selectedAddressId, selectAddress, setLastOrder } = useOrders();
   const [method, setMethod] = useState("razorpay");
-  const [phone, setPhone] = useState(user?.phone || "+91 98765 43210");
+  const [phone, setPhone] = useState(user?.phone || "+91 83560 68950");
   const [instructions, setInstructions] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Payment Modal State
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpStep, setOtpStep] = useState<"phone" | "verify">("phone");
-  const [modalPhone, setModalPhone] = useState(user?.phone || phone || "");
+  const [modalPhone, setModalPhone] = useState(user?.phone || phone || "+91 83560 68950");
   const [paymentOtp, setPaymentOtp] = useState("");
   const [sendingSms, setSendingSms] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
@@ -78,7 +78,7 @@ function CheckoutPage() {
     if (digitsOnly.length > 10) {
       digitsOnly = digitsOnly.slice(-10);
     }
-    const cleanPhone = digitsOnly.length === 10 ? digitsOnly : "9876543210";
+    const cleanPhone = digitsOnly.length === 10 ? digitsOnly : "8356068950";
 
     const isLoaded = await loadRazorpayScript();
     if (!isLoaded) {
@@ -161,7 +161,7 @@ function CheckoutPage() {
   /** Step 1: Trigger Razorpay Payment Confirmation OTP and Open Modal */
   const handlePlaceOrder = async () => {
     if (method === "razorpay") {
-      const cleanPhone = (phone || user?.phone || "+91 98765 43210").trim();
+      const cleanPhone = (phone || user?.phone || "+91 83560 68950").trim();
       setModalPhone(cleanPhone);
       setPaymentOtp("");
       setSendingSms(true);
@@ -169,8 +169,12 @@ function CheckoutPage() {
       setOtpStep("verify");
 
       try {
-        await sendOtp(cleanPhone);
-        toast.success(`Razorpay Payment OTP code sent to ${cleanPhone}`);
+        const res = await sendOtp(cleanPhone);
+        if (res && res.otpCode) {
+          toast.info(`📱 Razorpay Payment OTP Sent to ${cleanPhone}: [ ${res.otpCode} ]`, { duration: 12000 });
+        } else {
+          toast.success(`Razorpay Payment OTP code sent to ${cleanPhone}`);
+        }
       } catch (err) {
         console.warn("[Razorpay OTP Notice]:", err);
       } finally {
