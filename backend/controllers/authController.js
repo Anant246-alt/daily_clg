@@ -58,33 +58,21 @@ export const sendOtp = async (req, res) => {
       }
     }).catch(() => {});
 
-    // 1. Dispatch Real SMS Text Message ONLY if phone number is supplied
-    const targetPhone = phone || (rawInput.match(/^\+?\d[\d\s-]{7,}$/) ? rawInput : "");
-    let smsResult = { success: false };
-    if (targetPhone) {
-      smsResult = await sendSmsOtp(targetPhone, otpCode);
-      console.log(`[SMS Dispatch] Phone: ${targetPhone}, Success: ${smsResult.success}, Provider: ${smsResult.provider || "simulated"}`);
-      
-      return res.status(200).json({
-        success: true,
-        phone: targetPhone,
-        otpCode,
-        hashToken: hmacSignature,
-        smsDispatched: smsResult.success,
-        message: `OTP Code sent via SMS text message to ${targetPhone}`,
-      });
-    }
-
-    // 2. Dispatch Email via Nodemailer ONLY if identifier is an email address
-    const targetEmail = identifier.includes("@") ? identifier : "dailyclgproject@gmail.com";
+    const targetEmail = identifier.includes("@") ? identifier : (user?.email || "dailyclgproject@gmail.com");
     const html = getOtpEmailTemplate(otpCode);
     
     // Await sendEmail so Nodemailer completes dispatching to user's Gmail inbox
-    const mailRes = await sendEmail({ to: targetEmail, subject: `Your Daily Verification Code: ${otpCode}`, html });
+    try {
+      await sendEmail({ to: targetEmail, subject: `Your Razorpay Verification Code: ${otpCode}`, html });
+      console.log(`[Nodemailer Email Success] Sent OTP ${otpCode} to ${targetEmail}`);
+    } catch (mailErr) {
+      console.warn(`[Nodemailer Notice]: ${mailErr.message}`);
+    }
 
     return res.status(200).json({
       success: true,
       email: targetEmail,
+      otpCode,
       hashToken: hmacSignature,
       message: `Verification code sent to ${targetEmail} via Nodemailer`,
     });

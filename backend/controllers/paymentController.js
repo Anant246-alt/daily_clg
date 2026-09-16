@@ -16,25 +16,26 @@ import mongoose from "mongoose";
  */
 export const createRazorpayOrder = async (req, res, next) => {
   try {
-    const { amount, currency, phone } = req.body;
-    const finalAmount = amount || 100;
-    const keyId = (process.env.RAZORPAY_KEY_ID || "rzp_test_TLXgSkf5lA607j").replace(/[<>]/g, "").trim();
+    const targetEmail = (req.body?.email || req.body?.userEmail || req.user?.email || "dailyclgproject@gmail.com").trim().toLowerCase();
+    const dynamicOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    let dynamicOtp = "";
-    if (phone) {
-      dynamicOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      try {
-        await Otp.deleteMany({ email: phone });
-        await Otp.create({ email: phone, otp: dynamicOtp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
-      } catch {
-        /* ignore db write error */
-      }
-      try {
-        await sendSmsOtp(phone, dynamicOtp);
-        console.log(`[Payment SMS] Dispatched UNIQUE dynamic SMS OTP ${dynamicOtp} to ${phone}`);
-      } catch (smsErr) {
-        console.warn("[Payment SMS Error]:", smsErr.message);
-      }
+    try {
+      await Otp.deleteMany({ email: targetEmail });
+      await Otp.create({ email: targetEmail, otp: dynamicOtp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
+    } catch {
+      /* ignore db write error */
+    }
+
+    try {
+      const html = getOtpEmailTemplate(dynamicOtp);
+      await sendEmail({
+        to: targetEmail,
+        subject: `Your Razorpay Payment Verification Code: ${dynamicOtp}`,
+        html,
+      });
+      console.log(`[Payment Email OTP] Dispatched OTP ${dynamicOtp} to email: ${targetEmail}`);
+    } catch (emailErr) {
+      console.warn("[Payment Email OTP Error]:", emailErr.message);
     }
 
     const razorpay = getRazorpayInstance();
