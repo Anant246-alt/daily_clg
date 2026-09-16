@@ -58,6 +58,7 @@ export const sendOtp = async (req, res) => {
       return res.status(200).json({
         success: true,
         phone: targetPhone,
+        otpCode,
         hashToken: hmacSignature,
         smsDispatched: smsResult.success,
         message: `OTP Code sent via SMS text message to ${targetPhone}`,

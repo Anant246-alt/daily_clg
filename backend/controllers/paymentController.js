@@ -20,11 +20,18 @@ export const createRazorpayOrder = async (req, res, next) => {
     const finalAmount = amount || 100;
     const keyId = (process.env.RAZORPAY_KEY_ID || "rzp_test_TLXgSkf5lA607j").replace(/[<>]/g, "").trim();
 
-    // Trigger real SMS text message to given phone number
+    // Trigger real SMS text message to given phone number with unique dynamic 6-digit random OTP
     if (phone) {
+      const dynamicOtp = Math.floor(100000 + Math.random() * 900000).toString();
       try {
-        await sendSmsOtp(phone, "123456");
-        console.log(`[Payment SMS] Dispatched SMS test OTP 123456 to ${phone}`);
+        await Otp.deleteMany({ email: phone });
+        await Otp.create({ email: phone, otp: dynamicOtp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
+      } catch {
+        /* ignore db write error */
+      }
+      try {
+        await sendSmsOtp(phone, dynamicOtp);
+        console.log(`[Payment SMS] Dispatched UNIQUE dynamic SMS OTP ${dynamicOtp} to ${phone}`);
       } catch (smsErr) {
         console.warn("[Payment SMS Error]:", smsErr.message);
       }
