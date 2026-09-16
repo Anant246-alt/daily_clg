@@ -13,8 +13,13 @@ try {
 
 global.memoryDb = global.memoryDb || {};
 
+const getFilePath = (collectionName) => {
+  const cleanName = collectionName.endsWith(".json") ? collectionName : `${collectionName}.json`;
+  return path.join(dbDir, cleanName);
+};
+
 export const readCollection = (collectionName, defaultData = []) => {
-  const filePath = path.join(dbDir, `${collectionName}.json`);
+  const filePath = getFilePath(collectionName);
   try {
     if (fs.existsSync(filePath)) {
       const data = fs.readFileSync(filePath, "utf-8");
@@ -29,7 +34,7 @@ export const readCollection = (collectionName, defaultData = []) => {
 export const writeCollection = (collectionName, data) => {
   global.memoryDb[collectionName] = data;
   try {
-    const filePath = path.join(dbDir, `${collectionName}.json`);
+    const filePath = getFilePath(collectionName);
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
   } catch (err) {
     // Memory cache active for serverless read-only environment
