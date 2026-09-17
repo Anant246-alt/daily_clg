@@ -64,7 +64,7 @@ export const sendOtp = async (req, res) => {
     // Await sendEmail so Nodemailer completes dispatching to user's Gmail inbox
     let emailResult = { success: false };
     try {
-      emailResult = await sendEmail({ to: targetEmail, subject: `Your Daily Login Verification Code: ${otpCode}`, html });
+      emailResult = await sendEmail({ to: targetEmail, subject: `Your Daily Login Code: ${otpCode}`, html });
       if (emailResult.success) {
         console.log(`[Nodemailer Login Email Success] Sent Login OTP ${otpCode} to ${targetEmail}`);
       } else {
