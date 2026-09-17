@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 
 const DEFAULT_EMAIL_USER = "dailyclgproject@gmail.com";
-const DEFAULT_EMAIL_PASS = "wrbimcktkcejmipb";
+const DEFAULT_EMAIL_PASS = "kcrpntwyafvepip";
 
 export const sendEmail = async ({ to, subject, html }) => {
   const envUser = (process.env.EMAIL_USER || DEFAULT_EMAIL_USER).trim();
