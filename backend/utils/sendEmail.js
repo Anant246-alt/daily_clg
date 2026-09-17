@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+dotenv.config();
 
 const DEFAULT_EMAIL_USER = "dailyclgproject@gmail.com";
 const DEFAULT_EMAIL_PASS = "kcrpntwyafvepip";
@@ -10,7 +12,7 @@ export const sendEmail = async ({ to, subject, html }) => {
 
   const authAttempts = [
     { user: envUser, pass: envPass, source: "primary" },
-    { user: DEFAULT_EMAIL_USER, pass: "xtylqptxcienaant", source: "fallback" },
+    { user: DEFAULT_EMAIL_USER, pass: DEFAULT_EMAIL_PASS, source: "verified_default" },
   ];
 
   let lastError = "";
