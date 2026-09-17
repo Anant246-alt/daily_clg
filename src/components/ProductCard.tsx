@@ -165,9 +165,9 @@ export function ProductCard({ product, variant = "grid" }: { product: Product; v
               animate={{ opacity: 1 }}
               transition={{ duration: 0.2 }}
               loading="lazy"
-              width={800}
-              height={800}
-              className="h-44 w-full object-cover sm:h-52"
+              width={1000}
+              height={750}
+              className="aspect-[4/3] h-48 w-full object-cover sm:h-56"
             />
           </AnimatePresence>
           {favButton}
