@@ -21,9 +21,7 @@ export const Route = createFileRoute("/login")({
 
 const inputValid = (v: string) => {
   const trimmed = v.trim();
-  const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
-  const isPhone = /^\+?[0-9]{10,12}$/.test(trimmed.replace(/[\s-]/g, ""));
-  return isEmail || isPhone;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
 };
 
 function LoginPage() {
@@ -61,7 +59,7 @@ function LoginPage() {
 
   /** POST /auth/send-otp — delivers the 6-digit code via Nodemailer. */
   const handleSendOtp = async () => {
-    if (!inputValid(email)) return setError("Enter a valid email address or 10-digit phone number");
+    if (!inputValid(email)) return setError("Please enter a valid email address");
     setError("");
     setLoading(true);
     try {
@@ -134,20 +132,20 @@ function LoginPage() {
               className="space-y-4 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]"
             >
               <label htmlFor="email-input" className="block space-y-2 cursor-pointer">
-                <span className="text-sm font-semibold">Email or Phone number</span>
+                <span className="text-sm font-semibold">Email address</span>
                 <span className="flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-3 cursor-text focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/30">
                   <FiMail className="text-muted-foreground flex-shrink-0" />
                   <input
                     id="email-input"
                     name="email"
                     ref={emailInputRef}
-                    type="text"
+                    type="email"
                     autoFocus
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
-                    placeholder="you@example.com or 9876543210"
+                    placeholder="you@example.com"
                     className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none cursor-text relative z-10"
                   />
                 </span>
@@ -215,7 +213,7 @@ function LoginPage() {
                   }}
                   className="inline-flex items-center gap-1 font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
                 >
-                  <FiEdit2 /> Change input
+                  <FiEdit2 /> Change email
                 </button>
                 <button
                   type="button"
