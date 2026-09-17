@@ -3,9 +3,10 @@ import sandwich from "@/assets/sandwich.jpg";
 import icedtea from "@/assets/icedtea.jpg";
 import footlong from "@/assets/footlong.jpg";
 import clubSandwich from "@/assets/club_sandwich.jpg";
-import vegCombo from "@/assets/veg_combo.jpg";
+import veggieSupremeCombo from "@/assets/veggie_supreme_combo.jpg";
 import paneerCombo from "@/assets/paneer_combo.jpg";
 import clubCombo from "@/assets/club_combo.jpg";
+import healthyGardenFitCombo from "@/assets/healthy_garden_fit_combo.jpg";
 
 /** Pure Vegetarian Catalogue */
 export type Product = {
@@ -128,8 +129,8 @@ export const products: Product[] = [
     id: "p6",
     name: "Veggie Supreme Delight Combo",
     category: "combos",
-    image: vegCombo,
-    gallery: [vegCombo, sandwich, salad, icedtea],
+    image: veggieSupremeCombo,
+    gallery: [veggieSupremeCombo, sandwich, salad, icedtea],
     price: 349,
     mrp: 449,
     rating: 4.8,
@@ -182,8 +183,8 @@ export const products: Product[] = [
     id: "p9",
     name: "Healthy Garden Fit Combo",
     category: "combos",
-    image: vegCombo,
-    gallery: [vegCombo, salad, icedtea],
+    image: healthyGardenFitCombo,
+    gallery: [healthyGardenFitCombo, salad, icedtea],
     price: 299,
     mrp: 379,
     rating: 4.6,
