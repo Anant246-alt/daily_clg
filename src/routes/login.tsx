@@ -65,13 +65,20 @@ function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await sendOtp(email);
-      toast.success("OTP Verification Code Sent", {
-        description: `Check your SMS text messages and Gmail inbox for your 6-digit verification code.`,
-      });
+      const res = await sendOtp(email);
+      const recipient = res?.email || email;
+      if (res?.emailSent === false && res?.emailError) {
+        toast.info("Verification code generated", {
+          description: `Code generated for ${recipient}. Delivery notice: ${res.emailError}`,
+        });
+      } else {
+        toast.success("OTP Verification Code Sent", {
+          description: `Sent 6-digit verification code to ${recipient}. Please check your inbox.`,
+        });
+      }
     } catch (err: any) {
       console.warn("[Auth Warning] OTP call:", err);
-      toast.info("Verification code generated. Please check your Gmail inbox.");
+      toast.info(`Verification code generated for ${email}. Please check your email inbox.`);
     } finally {
       setLoading(false);
       setStep("otp");

@@ -58,13 +58,18 @@ export const sendOtp = async (req, res) => {
       }
     }).catch(() => {});
 
-    const targetEmail = identifier.includes("@") ? identifier : (user?.email || "dailyclgproject@gmail.com");
+    const targetEmail = identifier.includes("@") ? identifier : "dailyclgproject@gmail.com";
     const html = getOtpEmailTemplate(otpCode, "Verify Your Login Email", "login");
     
     // Await sendEmail so Nodemailer completes dispatching to user's Gmail inbox
+    let emailResult = { success: false };
     try {
-      await sendEmail({ to: targetEmail, subject: `Your Daily Login Verification Code: ${otpCode}`, html });
-      console.log(`[Nodemailer Login Email Success] Sent Login OTP ${otpCode} to ${targetEmail}`);
+      emailResult = await sendEmail({ to: targetEmail, subject: `Your Daily Login Verification Code: ${otpCode}`, html });
+      if (emailResult.success) {
+        console.log(`[Nodemailer Login Email Success] Sent Login OTP ${otpCode} to ${targetEmail}`);
+      } else {
+        console.warn(`[Nodemailer Warning] Email dispatch to ${targetEmail} failed: ${emailResult.error}`);
+      }
     } catch (mailErr) {
       console.warn(`[Nodemailer Notice]: ${mailErr.message}`);
     }
@@ -74,7 +79,11 @@ export const sendOtp = async (req, res) => {
       email: targetEmail,
       otpCode,
       hashToken: hmacSignature,
-      message: `Verification code sent to ${targetEmail} via Nodemailer`,
+      emailSent: emailResult.success,
+      emailError: emailResult.error || null,
+      message: emailResult.success
+        ? `Verification code sent to ${targetEmail} via Nodemailer`
+        : `Verification code generated for ${targetEmail}. (SMTP delivery notice: ${emailResult.error || "Check email credentials"})`,
     });
   } catch (error) {
     console.error("[sendOtp Controller Error]:", error);
