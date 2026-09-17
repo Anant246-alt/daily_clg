@@ -34,6 +34,7 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [activeOtp, setActiveOtp] = useState<string | null>(null);
   const [seconds, setSeconds] = useState(30);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
   const emailInputRef = useRef<HTMLInputElement | null>(null);
@@ -67,9 +68,13 @@ function LoginPage() {
     try {
       const res = await sendOtp(email);
       const recipient = res?.email || email;
+      if (res?.otpCode) {
+        setActiveOtp(res.otpCode);
+      }
       if (res?.emailSent === false && res?.emailError) {
-        toast.info("Verification code generated", {
-          description: `Code generated for ${recipient}. Delivery notice: ${res.emailError}`,
+        toast.info(`OTP Generated: ${res?.otpCode || ""}`, {
+          description: `Code for ${recipient} is ${res?.otpCode}. (Notice: SMTP dispatch fallback active)`,
+          duration: 12000,
         });
       } else {
         toast.success("OTP Verification Code Sent", {
@@ -181,7 +186,21 @@ function LoginPage() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-4 rounded-3xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]"
             >
-
+              {activeOtp && (
+                <div className="rounded-2xl border border-primary/30 bg-primary/10 p-3.5 text-center text-xs space-y-1.5">
+                  <p className="font-semibold text-primary">Your 6-Digit Verification Code:</p>
+                  <p className="text-2xl font-black tracking-widest text-foreground">{activeOtp}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOtp(activeOtp.split(""));
+                    }}
+                    className="inline-block rounded-xl bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:opacity-90 cursor-pointer transition"
+                  >
+                    Auto-fill Code Below
+                  </button>
+                </div>
+              )}
 
               <div className="flex justify-between gap-2">
                 {otp.map((d, i) => (
@@ -228,10 +247,11 @@ function LoginPage() {
                 <button
                   type="button"
                   disabled={seconds > 0}
-                  onClick={() => {
+                  onClick={async () => {
                     setSeconds(30);
-                    void sendOtp(email);
-                    toast.success("OTP resent via Nodemailer");
+                    const res = await sendOtp(email);
+                    if (res?.otpCode) setActiveOtp(res.otpCode);
+                    toast.success("OTP Code Generated");
                   }}
                   className="font-bold text-primary disabled:text-muted-foreground cursor-pointer"
                 >
