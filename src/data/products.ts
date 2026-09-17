@@ -65,21 +65,21 @@ export const products: Product[] = [
   },
   {
     id: "p2",
-    name: "Grilled Paneer & Herb Sandwich",
+    name: "Fresh Paneer & Herb Health Sandwich",
     category: "sandwiches",
     image: grilledPaneerSandwich,
     gallery: [grilledPaneerSandwich, footlong, salad],
     price: 289,
     mrp: 349,
-    rating: 4.8,
+    rating: 4.9,
     reviews: 431,
     veg: true,
     bestSeller: true,
     popular: true,
     description:
-      "Herbed paneer slabs, roasted bell peppers and fresh basil layered in toasted sourdough with garlic aioli. 100% Vegetarian.",
-    ingredients: ["Paneer", "Sourdough", "Bell peppers", "Basil", "Garlic aioli"],
-    nutrition: nutrition(440, 24, 41, 19),
+      "Fresh soft cottage cheese (paneer) slabs, crisp bell peppers, English cucumber, microgreens, and basil pesto on whole-grain sourdough. 100% Fresh & Healthy (non-grilled).",
+    ingredients: ["Fresh Cottage Cheese (Paneer)", "Whole-grain Sourdough", "Bell Peppers", "Microgreens", "Basil Pesto", "Olive Oil"],
+    nutrition: nutrition(310, 22, 32, 11),
   },
   {
     id: "p3",
@@ -113,9 +113,9 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "A full footlong loaded with charred paneer tikka, crunchy lettuce, tomatoes and mint mayo in a soft baked baguette.",
+      "A full footlong loaded with seasoned paneer tikka, crunchy lettuce, tomatoes and mint mayo in a soft baked baguette.",
     ingredients: ["Paneer tikka", "Baguette", "Lettuce", "Tomato", "Mint mayo"],
-    nutrition: nutrition(620, 28, 68, 24),
+    nutrition: nutrition(580, 28, 64, 18),
   },
   {
     id: "p5",
@@ -149,9 +149,9 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "100% Veg Supreme Meal: Grilled Paneer & Herb Sandwich, crisp Avocado Garden Salad, and refreshing Peach Mint Iced Tea.",
-    ingredients: ["Grilled Paneer Sandwich", "Avocado Garden Salad", "Peach Mint Iced Tea"],
-    nutrition: nutrition(680, 28, 72, 22),
+      "100% Healthy Veg Meal: Fresh Paneer & Herb Health Sandwich, crisp Avocado Garden Salad, and refreshing Peach Mint Iced Tea.",
+    ingredients: ["Fresh Paneer Health Sandwich", "Avocado Garden Salad", "Peach Mint Iced Tea"],
+    nutrition: nutrition(590, 28, 68, 16),
   },
   {
     id: "p7",
@@ -167,9 +167,9 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "100% Veg Feast: Charred Paneer Tikka Footlong, Berry Yogurt Bowl, and ice-cold Lemon Basil Iced Tea.",
+      "100% Healthy Veg Feast: Seasoned Paneer Tikka Footlong, Berry Yogurt Bowl, and ice-cold Lemon Basil Iced Tea.",
     ingredients: ["Paneer Tikka Footlong", "Berry Yogurt Bowl", "Lemon Basil Iced Tea"],
-    nutrition: nutrition(810, 36, 92, 26),
+    nutrition: nutrition(740, 36, 88, 20),
   },
   {
     id: "p8",
@@ -185,9 +185,9 @@ export const products: Product[] = [
     bestSeller: false,
     popular: true,
     description:
-      "Triple-layered Classic Veg Club Sandwich served with Mediterranean Feta Salad and Peach Mint Iced Tea.",
-    ingredients: ["Classic Veg Club Sandwich", "Mediterranean Salad", "Peach Mint Iced Tea"],
-    nutrition: nutrition(650, 22, 69, 20),
+      "Triple-layered Classic Veggie Garden Health Club served with Mediterranean Feta Salad and Peach Mint Iced Tea.",
+    ingredients: ["Classic Veggie Garden Health Club", "Mediterranean Salad", "Peach Mint Iced Tea"],
+    nutrition: nutrition(580, 22, 65, 14),
   },
   {
     id: "p9",
@@ -209,21 +209,21 @@ export const products: Product[] = [
   },
   {
     id: "p10",
-    name: "Classic Veg Club Sandwich",
+    name: "Classic Veggie Garden Health Club",
     category: "sandwiches",
     image: clubSandwich,
     gallery: [clubSandwich, grilledPaneerSandwich, salad],
     price: 219,
     mrp: 279,
-    rating: 4.5,
+    rating: 4.6,
     reviews: 173,
     veg: true,
     bestSeller: false,
     popular: true,
     description:
-      "Triple layered club with grilled veggies, cheese and herbed mayo. Comfort food done right.",
-    ingredients: ["Multigrain bread", "Grilled veggies", "Cheese", "Herbed mayo"],
-    nutrition: nutrition(430, 16, 52, 15),
+      "Triple-layered health sandwich with fresh avocado, cucumber, vine tomatoes, shredded carrots, and mint hummus on artisan multigrain bread. Fresh & non-grilled.",
+    ingredients: ["Multigrain Bread", "Fresh Avocado", "Cucumber", "Vine Tomatoes", "Shredded Carrots", "Mint Hummus"],
+    nutrition: nutrition(290, 14, 38, 9),
   },
   {
     id: "p11",
@@ -316,7 +316,7 @@ export const products: Product[] = [
   },
   {
     id: "p16",
-    name: "Spinach Corn & Cheese Toastie",
+    name: "Spinach Sweet Corn & Cottage Cheese Sandwich",
     category: "sandwiches",
     image: spinachCornSandwich,
     gallery: [spinachCornSandwich, grilledPaneerSandwich, clubSandwich],
@@ -328,13 +328,13 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "Sautéed spinach, sweet corn kernels, and melted mozzarella cheese grilled between buttered sourdough. 100% Veg.",
-    ingredients: ["Sourdough bread", "Spinach", "Sweet corn", "Mozzarella cheese", "Herbs"],
-    nutrition: nutrition(390, 15, 45, 16),
+      "Fresh organic baby spinach, sweet corn kernels, crumbled fresh cottage cheese (paneer), and extra virgin olive oil on whole-wheat bread. 100% Fresh & non-grilled.",
+    ingredients: ["Whole-wheat Bread", "Baby Spinach", "Sweet Corn", "Crumbled Paneer", "Olive Oil", "Herbs"],
+    nutrition: nutrition(270, 16, 36, 8),
   },
   {
     id: "p17",
-    name: "Avocado Tomato Pesto Toastie",
+    name: "Fresh Avocado Tomato & Basil Pesto Sandwich",
     category: "sandwiches",
     image: avocadoPestoSandwich,
     gallery: [avocadoPestoSandwich, spinachCornSandwich, grilledPaneerSandwich],
@@ -346,13 +346,13 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "Sliced avocado, juicy vine tomatoes, fresh basil pesto, and feta cheese on toasted artisanal multigrain bread.",
-    ingredients: ["Multigrain bread", "Avocado", "Cherry tomatoes", "Basil pesto", "Feta cheese"],
-    nutrition: nutrition(410, 14, 42, 21),
+      "Sliced ripe avocado, juicy vine-ripened tomatoes, fresh basil pesto, and pumpkin seeds on artisan seeded sourdough. Clean, fresh & non-grilled.",
+    ingredients: ["Seeded Sourdough", "Ripe Avocado", "Vine Tomatoes", "Basil Pesto", "Pumpkin Seeds"],
+    nutrition: nutrition(320, 12, 34, 14),
   },
   {
     id: "p18",
-    name: "Bombay Spicy Veg Grill Sandwich",
+    name: "Bombay Fresh Spiced Veggie Health Sandwich",
     category: "sandwiches",
     image: clubSandwich,
     gallery: [clubSandwich, spinachCornSandwich, grilledPaneerSandwich],
@@ -364,9 +364,9 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "Classic street-style layered sandwich with spiced potatoes, cucumber, beetroot, mint chutney, and processed cheese.",
-    ingredients: ["White bread", "Spiced potatoes", "Cucumber", "Beetroot", "Mint chutney", "Cheese"],
-    nutrition: nutrition(380, 12, 54, 13),
+      "Layered fresh cucumber, beetroot, sweet potato slices, fresh mint-coriander chutney, and sprouted seeds on soft whole-grain bread. 100% Fresh & healthy.",
+    ingredients: ["Whole-grain Bread", "Fresh Cucumber", "Beetroot", "Sweet Potato", "Mint Coriander Chutney", "Sprouted Seeds"],
+    nutrition: nutrition(240, 10, 42, 4),
   },
 ];
 
