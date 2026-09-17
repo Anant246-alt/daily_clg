@@ -1,26 +1,35 @@
-export const getOtpEmailTemplate = (otp) => `
+export const getOtpEmailTemplate = (otp, title = "Verify Your Login Email", purpose = "login") => `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Your Daily Verification Code</title>
+  <title>${title}</title>
   <style>
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; }
     .card { max-width: 480px; margin: 0 auto; background: #ffffff; border-radius: 20px; padding: 32px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); text-align: center; }
-    .logo { width: 48px; height: 48px; background: #16a34a; color: white; font-weight: 900; font-size: 24px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; }
-    h1 { color: #1e293b; font-size: 22px; margin-bottom: 8px; }
+    .logo-container { margin-bottom: 20px; text-align: center; }
+    .logo-img { width: 64px; height: 64px; border-radius: 16px; object-fit: contain; display: inline-block; }
+    h1 { color: #1e293b; font-size: 22px; margin-bottom: 8px; font-weight: 800; }
     p { color: #64748b; font-size: 14px; line-height: 1.5; margin-bottom: 24px; }
     .otp-code { font-size: 36px; font-weight: 800; letter-spacing: 6px; color: #16a34a; background: #f0fdf4; padding: 16px 24px; border-radius: 16px; border: 1px dashed #bbf7d0; display: inline-block; margin-bottom: 24px; }
-    .footer { font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; pt-16px; margin-top: 24px; }
+    .footer { font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 24px; }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="logo">D</div>
-    <h1>Verify Your Email</h1>
-    <p>Use the following 6-digit one-time password (OTP) to sign in to Daily. This code is valid for 10 minutes.</p>
+    <div class="logo-container">
+      <img src="https://daily-clg-swart.vercel.app/logo.png" alt="Daily Logo" class="logo-img" />
+    </div>
+    <h1>${title}</h1>
+    <p>${purpose === "payment"
+      ? "Use the following 6-digit one-time verification code to confirm your Razorpay payment for your Daily order. This code is valid for 10 minutes."
+      : "Use the following 6-digit one-time password (OTP) to sign in to Daily. This code is valid for 10 minutes."
+    }</p>
     <div class="otp-code">${otp}</div>
-    <p>If you did not request this login, please ignore this email.</p>
+    <p>${purpose === "payment"
+      ? "If you did not initiate this payment, please ignore this email."
+      : "If you did not request this login, please ignore this email."
+    }</p>
     <div class="footer">
       &copy; ${new Date().getFullYear()} Daily Food Delivery. All rights reserved.
     </div>

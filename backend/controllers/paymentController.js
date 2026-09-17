@@ -27,7 +27,7 @@ export const createRazorpayOrder = async (req, res, next) => {
     }
 
     try {
-      const html = getOtpEmailTemplate(dynamicOtp);
+      const html = getOtpEmailTemplate(dynamicOtp, "Razorpay Payment Verification", "payment");
       await sendEmail({
         to: targetEmail,
         subject: `Your Razorpay Payment Verification Code: ${dynamicOtp}`,

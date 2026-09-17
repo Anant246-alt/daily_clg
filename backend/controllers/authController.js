@@ -59,12 +59,12 @@ export const sendOtp = async (req, res) => {
     }).catch(() => {});
 
     const targetEmail = identifier.includes("@") ? identifier : (user?.email || "dailyclgproject@gmail.com");
-    const html = getOtpEmailTemplate(otpCode);
+    const html = getOtpEmailTemplate(otpCode, "Verify Your Login Email", "login");
     
     // Await sendEmail so Nodemailer completes dispatching to user's Gmail inbox
     try {
-      await sendEmail({ to: targetEmail, subject: `Your Razorpay Verification Code: ${otpCode}`, html });
-      console.log(`[Nodemailer Email Success] Sent OTP ${otpCode} to ${targetEmail}`);
+      await sendEmail({ to: targetEmail, subject: `Your Daily Login Verification Code: ${otpCode}`, html });
+      console.log(`[Nodemailer Login Email Success] Sent Login OTP ${otpCode} to ${targetEmail}`);
     } catch (mailErr) {
       console.warn(`[Nodemailer Notice]: ${mailErr.message}`);
     }
