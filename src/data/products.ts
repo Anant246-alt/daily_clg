@@ -3,6 +3,9 @@ import sandwich from "@/assets/sandwich.jpg";
 import icedtea from "@/assets/icedtea.jpg";
 import footlong from "@/assets/footlong.jpg";
 import clubSandwich from "@/assets/club_sandwich.jpg";
+import vegCombo from "@/assets/veg_combo.jpg";
+import paneerCombo from "@/assets/paneer_combo.jpg";
+import clubCombo from "@/assets/club_combo.jpg";
 
 /** Pure Vegetarian Catalogue */
 export type Product = {
@@ -123,21 +126,75 @@ export const products: Product[] = [
   },
   {
     id: "p6",
-    name: "Veggie Delight Combo",
+    name: "Veggie Supreme Delight Combo",
     category: "combos",
-    image: sandwich,
-    gallery: [sandwich, salad, icedtea],
-    price: 399,
-    mrp: 499,
-    rating: 4.7,
-    reviews: 141,
+    image: vegCombo,
+    gallery: [vegCombo, sandwich, salad, icedtea],
+    price: 349,
+    mrp: 449,
+    rating: 4.8,
+    reviews: 241,
     veg: true,
     bestSeller: true,
     popular: true,
     description:
-      "Grilled Paneer sandwich, a garden side salad and an iced tea. 100% vegetarian energy meal.",
-    ingredients: ["Paneer sandwich", "Side salad", "Iced tea"],
+      "100% Veg Supreme Meal: Grilled Paneer & Herb Sandwich, crisp Avocado Garden Salad, and refreshing Peach Mint Iced Tea.",
+    ingredients: ["Grilled Paneer Sandwich", "Avocado Garden Salad", "Peach Mint Iced Tea"],
     nutrition: nutrition(680, 28, 72, 22),
+  },
+  {
+    id: "p7",
+    name: "Paneer Tikka Feast Combo",
+    category: "combos",
+    image: paneerCombo,
+    gallery: [paneerCombo, footlong, salad, icedtea],
+    price: 429,
+    mrp: 549,
+    rating: 4.9,
+    reviews: 189,
+    veg: true,
+    bestSeller: true,
+    popular: true,
+    description:
+      "100% Veg Feast: Charred Paneer Tikka Footlong, Berry Yogurt Bowl, and ice-cold Lemon Basil Iced Tea.",
+    ingredients: ["Paneer Tikka Footlong", "Berry Yogurt Bowl", "Lemon Basil Iced Tea"],
+    nutrition: nutrition(810, 36, 92, 26),
+  },
+  {
+    id: "p8",
+    name: "Classic Veg Club & Salad Combo",
+    category: "combos",
+    image: clubCombo,
+    gallery: [clubCombo, clubSandwich, salad, icedtea],
+    price: 319,
+    mrp: 399,
+    rating: 4.7,
+    reviews: 156,
+    veg: true,
+    bestSeller: false,
+    popular: true,
+    description:
+      "Triple-layered Classic Veg Club Sandwich served with Mediterranean Feta Salad and Peach Mint Iced Tea.",
+    ingredients: ["Classic Veg Club Sandwich", "Mediterranean Salad", "Peach Mint Iced Tea"],
+    nutrition: nutrition(650, 22, 69, 20),
+  },
+  {
+    id: "p9",
+    name: "Healthy Garden Fit Combo",
+    category: "combos",
+    image: vegCombo,
+    gallery: [vegCombo, salad, icedtea],
+    price: 299,
+    mrp: 379,
+    rating: 4.6,
+    reviews: 112,
+    veg: true,
+    bestSeller: false,
+    popular: true,
+    description:
+      "Light & Clean: Avocado Garden Salad, Berry Yogurt Bowl, and freshly brewed Lemon Basil Iced Tea.",
+    ingredients: ["Avocado Garden Salad", "Berry Yogurt Bowl", "Lemon Basil Iced Tea"],
+    nutrition: nutrition(510, 19, 58, 14),
   },
   {
     id: "p10",
