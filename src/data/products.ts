@@ -14,9 +14,11 @@ import berryHibiscusIcedTea from "@/assets/berry_hibiscus_iced_tea.jpg";
 import passionFruitIcedTea from "@/assets/passion_fruit_iced_tea.jpg";
 import matchaMintIcedTea from "@/assets/matcha_mint_iced_tea.jpg";
 
-import grilledPaneerSandwich from "@/assets/grilled_paneer_sandwich.jpg";
-import spinachCornSandwich from "@/assets/spinach_corn_sandwich.jpg";
-import avocadoPestoSandwich from "@/assets/avocado_pesto_sandwich.jpg";
+import rawAvocadoSprout from "@/assets/raw_avocado_sprout.jpg";
+import cucumberHummus from "@/assets/cucumber_hummus.jpg";
+import spinachCottageCheese from "@/assets/spinach_cottage_cheese.jpg";
+import avocadoPestoFresh from "@/assets/avocado_pesto_fresh.jpg";
+import bombayFreshBeetroot from "@/assets/bombay_fresh_beetroot.jpg";
 
 /** Pure Vegetarian Catalogue */
 export type Product = {
@@ -50,7 +52,7 @@ export const products: Product[] = [
     name: "Avocado Garden Salad",
     category: "salads",
     image: salad,
-    gallery: [salad, grilledPaneerSandwich, peachIcedTea],
+    gallery: [salad, rawAvocadoSprout, peachIcedTea],
     price: 249,
     mrp: 329,
     rating: 4.8,
@@ -65,10 +67,10 @@ export const products: Product[] = [
   },
   {
     id: "p2",
-    name: "Fresh Paneer & Herb Health Sandwich",
+    name: "Raw Garden Avocado & Sprout Sandwich",
     category: "sandwiches",
-    image: grilledPaneerSandwich,
-    gallery: [grilledPaneerSandwich, footlong, salad],
+    image: rawAvocadoSprout,
+    gallery: [rawAvocadoSprout, cucumberHummus, spinachCottageCheese],
     price: 289,
     mrp: 349,
     rating: 4.9,
@@ -77,9 +79,9 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "Fresh soft cottage cheese (paneer) slabs, crisp bell peppers, English cucumber, microgreens, and basil pesto on whole-grain sourdough. 100% Fresh & Healthy (non-grilled).",
-    ingredients: ["Fresh Cottage Cheese (Paneer)", "Whole-grain Sourdough", "Bell Peppers", "Microgreens", "Basil Pesto", "Olive Oil"],
-    nutrition: nutrition(310, 22, 32, 11),
+      "Fresh ripe avocado slices, crunchy green alfalfa sprouts, crisp English cucumber, and romaine lettuce on soft un-toasted multigrain bread. 100% Fresh & healthy (no cheese, non-grilled).",
+    ingredients: ["Soft Multigrain Bread", "Fresh Avocado", "Alfalfa Sprouts", "English Cucumber", "Romaine Lettuce", "Olive Oil"],
+    nutrition: nutrition(280, 12, 34, 11),
   },
   {
     id: "p3",
@@ -104,7 +106,7 @@ export const products: Product[] = [
     name: "Paneer Tikka Footlong",
     category: "footlong",
     image: footlong,
-    gallery: [footlong, grilledPaneerSandwich, salad],
+    gallery: [footlong, rawAvocadoSprout, salad],
     price: 349,
     mrp: 449,
     rating: 4.9,
@@ -122,7 +124,7 @@ export const products: Product[] = [
     name: "Berry Yogurt Bowl",
     category: "yogurt-bowl",
     image: salad,
-    gallery: [salad, peachIcedTea, grilledPaneerSandwich],
+    gallery: [salad, peachIcedTea, rawAvocadoSprout],
     price: 199,
     mrp: 259,
     rating: 4.5,
@@ -140,7 +142,7 @@ export const products: Product[] = [
     name: "Veggie Supreme Delight Combo",
     category: "combos",
     image: veggieSupremeCombo,
-    gallery: [veggieSupremeCombo, grilledPaneerSandwich, salad, peachIcedTea],
+    gallery: [veggieSupremeCombo, rawAvocadoSprout, salad, peachIcedTea],
     price: 349,
     mrp: 449,
     rating: 4.8,
@@ -149,9 +151,9 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "100% Healthy Veg Meal: Fresh Paneer & Herb Health Sandwich, crisp Avocado Garden Salad, and refreshing Peach Mint Iced Tea.",
-    ingredients: ["Fresh Paneer Health Sandwich", "Avocado Garden Salad", "Peach Mint Iced Tea"],
-    nutrition: nutrition(590, 28, 68, 16),
+      "100% Healthy Veg Meal: Raw Garden Avocado & Sprout Sandwich, crisp Avocado Garden Salad, and refreshing Peach Mint Iced Tea.",
+    ingredients: ["Raw Garden Avocado & Sprout Sandwich", "Avocado Garden Salad", "Peach Mint Iced Tea"],
+    nutrition: nutrition(560, 24, 68, 16),
   },
   {
     id: "p7",
@@ -176,7 +178,7 @@ export const products: Product[] = [
     name: "Classic Veg Club & Salad Combo",
     category: "combos",
     image: clubCombo,
-    gallery: [clubCombo, clubSandwich, salad, peachIcedTea],
+    gallery: [clubCombo, cucumberHummus, salad, peachIcedTea],
     price: 319,
     mrp: 399,
     rating: 4.7,
@@ -185,9 +187,9 @@ export const products: Product[] = [
     bestSeller: false,
     popular: true,
     description:
-      "Triple-layered Classic Veggie Garden Health Club served with Mediterranean Feta Salad and Peach Mint Iced Tea.",
-    ingredients: ["Classic Veggie Garden Health Club", "Mediterranean Salad", "Peach Mint Iced Tea"],
-    nutrition: nutrition(580, 22, 65, 14),
+      "Triple-layered Fresh Cucumber Hummus & Greens Club served with Mediterranean Feta Salad and Peach Mint Iced Tea.",
+    ingredients: ["Fresh Cucumber Hummus Club", "Mediterranean Salad", "Peach Mint Iced Tea"],
+    nutrition: nutrition(550, 20, 65, 12),
   },
   {
     id: "p9",
@@ -209,10 +211,10 @@ export const products: Product[] = [
   },
   {
     id: "p10",
-    name: "Classic Veggie Garden Health Club",
+    name: "Fresh Cucumber Hummus & Greens Club",
     category: "sandwiches",
-    image: clubSandwich,
-    gallery: [clubSandwich, grilledPaneerSandwich, salad],
+    image: cucumberHummus,
+    gallery: [cucumberHummus, rawAvocadoSprout, spinachCottageCheese],
     price: 219,
     mrp: 279,
     rating: 4.6,
@@ -221,9 +223,9 @@ export const products: Product[] = [
     bestSeller: false,
     popular: true,
     description:
-      "Triple-layered health sandwich with fresh avocado, cucumber, vine tomatoes, shredded carrots, and mint hummus on artisan multigrain bread. Fresh & non-grilled.",
-    ingredients: ["Multigrain Bread", "Fresh Avocado", "Cucumber", "Vine Tomatoes", "Shredded Carrots", "Mint Hummus"],
-    nutrition: nutrition(290, 14, 38, 9),
+      "Triple-layered soft artisan health club packed with sliced English cucumber, vine tomatoes, microgreens, and house chickpea hummus. 100% Plant-based & fresh (non-grilled).",
+    ingredients: ["Soft Whole-Wheat Bread", "Fresh Cucumber", "Vine Tomatoes", "Microgreens", "Chickpea Hummus"],
+    nutrition: nutrition(260, 11, 36, 7),
   },
   {
     id: "p11",
@@ -248,7 +250,7 @@ export const products: Product[] = [
     name: "Mediterranean Salad",
     category: "salads",
     image: salad,
-    gallery: [salad, grilledPaneerSandwich, peachIcedTea],
+    gallery: [salad, rawAvocadoSprout, peachIcedTea],
     price: 269,
     mrp: 339,
     rating: 4.6,
@@ -316,10 +318,10 @@ export const products: Product[] = [
   },
   {
     id: "p16",
-    name: "Spinach Sweet Corn & Cottage Cheese Sandwich",
+    name: "Organic Spinach & Sweet Corn Cottage Cheese Sandwich",
     category: "sandwiches",
-    image: spinachCornSandwich,
-    gallery: [spinachCornSandwich, grilledPaneerSandwich, clubSandwich],
+    image: spinachCottageCheese,
+    gallery: [spinachCottageCheese, rawAvocadoSprout, cucumberHummus],
     price: 199,
     mrp: 249,
     rating: 4.7,
@@ -328,16 +330,16 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "Fresh organic baby spinach, sweet corn kernels, crumbled fresh cottage cheese (paneer), and extra virgin olive oil on whole-wheat bread. 100% Fresh & non-grilled.",
-    ingredients: ["Whole-wheat Bread", "Baby Spinach", "Sweet Corn", "Crumbled Paneer", "Olive Oil", "Herbs"],
-    nutrition: nutrition(270, 16, 36, 8),
+      "Fresh organic baby spinach, sweet corn, crumbled fresh paneer (cottage cheese), and lemon herb dressing on soft whole-grain bread. Fresh & un-toasted (no cheese, non-grilled).",
+    ingredients: ["Whole-grain Bread", "Organic Baby Spinach", "Sweet Corn", "Fresh Cottage Cheese (Paneer)", "Lemon Herb Dressing"],
+    nutrition: nutrition(270, 16, 35, 8),
   },
   {
     id: "p17",
-    name: "Fresh Avocado Tomato & Basil Pesto Sandwich",
+    name: "Artisan Avocado Tomato & Herb Pesto Sandwich",
     category: "sandwiches",
-    image: avocadoPestoSandwich,
-    gallery: [avocadoPestoSandwich, spinachCornSandwich, grilledPaneerSandwich],
+    image: avocadoPestoFresh,
+    gallery: [avocadoPestoFresh, spinachCottageCheese, rawAvocadoSprout],
     price: 259,
     mrp: 319,
     rating: 4.8,
@@ -346,16 +348,16 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "Sliced ripe avocado, juicy vine-ripened tomatoes, fresh basil pesto, and pumpkin seeds on artisan seeded sourdough. Clean, fresh & non-grilled.",
-    ingredients: ["Seeded Sourdough", "Ripe Avocado", "Vine Tomatoes", "Basil Pesto", "Pumpkin Seeds"],
-    nutrition: nutrition(320, 12, 34, 14),
+      "Sliced fresh avocado, juicy vine-ripened tomatoes, dairy-free basil pesto, and toasted pumpkin seeds on soft seeded bread. Pure healthy whole foods (non-grilled).",
+    ingredients: ["Seeded Whole-wheat Bread", "Fresh Avocado", "Vine Tomatoes", "Dairy-free Basil Pesto", "Pumpkin Seeds"],
+    nutrition: nutrition(310, 11, 32, 13),
   },
   {
     id: "p18",
-    name: "Bombay Fresh Spiced Veggie Health Sandwich",
+    name: "Bombay Fresh Beetroot & Mint Chutney Sandwich",
     category: "sandwiches",
-    image: clubSandwich,
-    gallery: [clubSandwich, spinachCornSandwich, grilledPaneerSandwich],
+    image: bombayFreshBeetroot,
+    gallery: [bombayFreshBeetroot, cucumberHummus, rawAvocadoSprout],
     price: 179,
     mrp: 229,
     rating: 4.9,
@@ -364,9 +366,9 @@ export const products: Product[] = [
     bestSeller: true,
     popular: true,
     description:
-      "Layered fresh cucumber, beetroot, sweet potato slices, fresh mint-coriander chutney, and sprouted seeds on soft whole-grain bread. 100% Fresh & healthy.",
-    ingredients: ["Whole-grain Bread", "Fresh Cucumber", "Beetroot", "Sweet Potato", "Mint Coriander Chutney", "Sprouted Seeds"],
-    nutrition: nutrition(240, 10, 42, 4),
+      "Layered fresh beetroot slices, cucumber, sweet potato, fresh mint-coriander chutney, and sprouted seeds on soft whole-wheat bread. Clean & refreshing (non-grilled, no cheese).",
+    ingredients: ["Soft Whole-wheat Bread", "Fresh Beetroot", "Cucumber", "Sweet Potato", "Mint Coriander Chutney", "Sprouted Seeds"],
+    nutrition: nutrition(230, 9, 41, 3),
   },
 ];
 
