@@ -1,22 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
-import { FiMail, FiArrowRight, FiEdit2, FiAlertCircle } from "react-icons/fi";
+import { FiMail, FiUser, FiArrowRight, FiEdit2, FiAlertCircle } from "react-icons/fi";
 import { toast } from "sonner";
 import { sendOtp } from "@/api/auth";
 import { useAuth } from "@/context/AuthContext";
 import { Spinner } from "@/components/States";
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute("/signup")({
   head: () => ({
     meta: [
-      { title: "Sign In · Daily" },
-      { name: "description", content: "Sign in to Daily with a one-time password sent to your email." },
-      { property: "og:title", content: "Sign In · Daily" },
-      { property: "og:description", content: "Sign in to Daily with a one-time password sent to your email." },
+      { title: "Sign Up · Daily" },
+      { name: "description", content: "Create your free account on Daily to order fresh healthy food." },
+      { property: "og:title", content: "Sign Up · Daily" },
+      { property: "og:description", content: "Create your free account on Daily to order fresh healthy food." },
     ],
   }),
-  component: LoginPage,
+  component: SignUpPage,
 });
 
 const inputValidEmail = (v: string) => {
@@ -24,18 +24,19 @@ const inputValidEmail = (v: string) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
 };
 
-function LoginPage() {
+function SignUpPage() {
   const navigate = useNavigate();
   const { signIn, isAuthenticated, hydrated } = useAuth();
-  const [step, setStep] = useState<"email" | "otp">("email");
+  const [step, setStep] = useState<"details" | "otp">("details");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [notRegistered, setNotRegistered] = useState(false);
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [seconds, setSeconds] = useState(30);
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
-  const emailInputRef = useRef<HTMLInputElement | null>(null);
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (hydrated && isAuthenticated) {
@@ -44,9 +45,9 @@ function LoginPage() {
   }, [hydrated, isAuthenticated, navigate]);
 
   useEffect(() => {
-    if (step === "email") {
+    if (step === "details") {
       const timer = setTimeout(() => {
-        emailInputRef.current?.focus();
+        nameInputRef.current?.focus();
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -58,15 +59,16 @@ function LoginPage() {
     return () => clearTimeout(t);
   }, [step, seconds]);
 
-  /** Send OTP for Existing User Login */
+  /** Send OTP for New User Registration */
   const handleSendOtp = async () => {
-    setNotRegistered(false);
+    setAlreadyRegistered(false);
+    if (!name.trim()) return setError("Please enter your full name");
     if (!inputValidEmail(email)) return setError("Please enter a valid email address");
 
     setError("");
     setLoading(true);
     try {
-      const res = await sendOtp(email, "login");
+      const res = await sendOtp(email, "signup");
       const recipient = res?.email || email;
       toast.success("OTP Sent Successfully", {
         description: `We sent a 6-digit verification code to ${recipient}. Please check your email inbox.`,
@@ -74,11 +76,11 @@ function LoginPage() {
       setStep("otp");
       setSeconds(30);
     } catch (err: any) {
-      if (err.isNotRegistered) {
-        setNotRegistered(true);
-        setError("No account found with this email address. Please Sign Up to create an account.");
-        toast.error("Account Not Found", {
-          description: "No account found with this email address. Please Sign Up first.",
+      if (err.isAlreadyRegistered) {
+        setAlreadyRegistered(true);
+        setError("This email address is already registered. Please Sign In instead.");
+        toast.error("Email Already Registered", {
+          description: "This email is already registered. Please Sign In instead.",
         });
       } else {
         const errorMsg = err.message || "Email delivery failure. Could not send OTP to the entered email address.";
@@ -96,14 +98,14 @@ function LoginPage() {
     if (digit && i < 5) inputs.current[i + 1]?.focus();
   };
 
-  /** Verify OTP & Complete Login */
+  /** Verify OTP & Complete Registration */
   const handleVerify = async () => {
     const code = otp.join("");
     if (code.length !== 6) return setError("Enter all 6 digits");
     setError("");
     setLoading(true);
     try {
-      const res = await signIn(email, code);
+      const res = await signIn(email, code, name.trim());
       if (res?.isNewUser) {
         toast.success("Successful Registration!", {
           description: "Your new account has been created. Welcome to Daily!",
@@ -126,7 +128,7 @@ function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col justify-center bg-background px-5 py-10">
       <div className="mx-auto w-full max-w-md">
-        {/* Login Header Card inspired by Reference Image */}
+        {/* Registration Header Card inspired by Reference Image */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -137,22 +139,44 @@ function LoginPage() {
             <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-2xl bg-card border border-border p-2 shadow-sm">
               <img src="/logo.png" alt="Daily Logo" className="size-full object-contain" />
             </div>
-            <h1 className="text-2xl font-black sm:text-3xl">Welcome Back</h1>
+            <h1 className="text-2xl font-black sm:text-3xl">Welcome</h1>
             <p className="mt-1 text-xs text-muted-foreground font-medium">
-              Sign in with a one-time verification code.
+              Create your free account in seconds.
             </p>
           </div>
 
           <div className="p-6">
             <AnimatePresence mode="wait">
-              {step === "email" ? (
+              {step === "details" ? (
                 <motion.div
-                  key="email"
+                  key="details"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   className="space-y-4"
                 >
+                  {/* Full Name Input */}
+                  <label htmlFor="name-input" className="block space-y-1.5 cursor-pointer">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Full Name</span>
+                    <span className="flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-3 cursor-text focus-within:border-primary focus-within:ring-2 focus-within:ring-ring/30">
+                      <FiUser className="text-muted-foreground flex-shrink-0" />
+                      <input
+                        id="name-input"
+                        name="name"
+                        ref={nameInputRef}
+                        type="text"
+                        autoFocus
+                        value={name}
+                        onChange={(e) => {
+                          setName(e.target.value);
+                          setError("");
+                        }}
+                        placeholder="Your full name"
+                        className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none cursor-text"
+                      />
+                    </span>
+                  </label>
+
                   {/* Email Address Input */}
                   <label htmlFor="email-input" className="block space-y-1.5 cursor-pointer">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Email Address</span>
@@ -161,15 +185,13 @@ function LoginPage() {
                       <input
                         id="email-input"
                         name="email"
-                        ref={emailInputRef}
                         type="email"
-                        autoFocus
                         autoComplete="email"
                         value={email}
                         onChange={(e) => {
                           setEmail(e.target.value);
                           setError("");
-                          setNotRegistered(false);
+                          setAlreadyRegistered(false);
                         }}
                         onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
                         placeholder="your@email.com"
@@ -185,16 +207,16 @@ function LoginPage() {
                     </div>
                   )}
 
-                  {notRegistered && (
+                  {alreadyRegistered && (
                     <Link
-                      to="/signup"
+                      to="/login"
                       className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary bg-primary/10 py-3 text-xs font-bold text-primary hover:bg-primary/20 transition cursor-pointer"
                     >
-                      Sign Up Now <FiArrowRight />
+                      Sign In Now <FiArrowRight />
                     </Link>
                   )}
 
-                  {!notRegistered && (
+                  {!alreadyRegistered && (
                     <motion.button
                       type="button"
                       whileTap={{ scale: 0.97 }}
@@ -203,19 +225,19 @@ function LoginPage() {
                       className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-70 cursor-pointer shadow-md hover:opacity-90 transition"
                     >
                       {loading ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : null}
-                      Send OTP <FiArrowRight />
+                      Create Free Account <FiArrowRight />
                     </motion.button>
                   )}
 
                   <p className="text-center text-[11px] text-muted-foreground pt-1">
-                    By continuing, you agree to our Terms of Use and Privacy Policy.
+                    By registering, you agree to our Terms of Use and Privacy Policy.
                   </p>
 
                   <div className="pt-4 text-center border-t border-border">
                     <p className="text-xs text-muted-foreground">
-                      Don't have an account?{" "}
-                      <Link to="/signup" className="font-extrabold text-primary hover:underline">
-                        Sign Up
+                      Already have an account?{" "}
+                      <Link to="/login" className="font-extrabold text-primary hover:underline">
+                        Sign In
                       </Link>
                     </p>
                   </div>
@@ -269,20 +291,20 @@ function LoginPage() {
                     className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-70 cursor-pointer shadow-md hover:opacity-90 transition"
                   >
                     {loading ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : null}
-                    Verify OTP & Sign In
+                    Verify OTP & Register
                   </motion.button>
 
                   <div className="flex items-center justify-between text-xs pt-2 border-t border-border">
                     <button
                       type="button"
                       onClick={() => {
-                        setStep("email");
+                        setStep("details");
                         setOtp(["", "", "", "", "", ""]);
                         setError("");
                       }}
                       className="inline-flex items-center gap-1 font-semibold text-muted-foreground hover:text-foreground cursor-pointer"
                     >
-                      <FiEdit2 /> Change email
+                      <FiEdit2 /> Change details
                     </button>
                     <button
                       type="button"
@@ -290,7 +312,7 @@ function LoginPage() {
                       onClick={async () => {
                         setSeconds(30);
                         try {
-                          await sendOtp(email, "login");
+                          await sendOtp(email, "signup");
                           toast.success("OTP Verification Code Resent", {
                             description: `Code sent to ${email}`,
                           });

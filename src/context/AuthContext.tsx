@@ -16,7 +16,7 @@ type AuthValue = {
   user: User | null;
   isAuthenticated: boolean;
   hydrated: boolean;
-  signIn: (email: string, otp: string) => Promise<SignInResult>;
+  signIn: (email: string, otp: string, name?: string) => Promise<SignInResult>;
   signOut: () => void;
   updateUser: (patch: Partial<User>) => void;
   refreshProfile: () => Promise<void>;
@@ -47,8 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [hydrated, refreshProfile]);
 
   const signIn = useCallback(
-    async (email: string, otp: string) => {
-      const res = await authApi.verifyOtp(email, otp);
+    async (email: string, otp: string, name?: string) => {
+      const res = await authApi.verifyOtp(email, otp, name);
       if (res.token) {
         window.localStorage.setItem("daily.token", res.token);
       }

@@ -16,10 +16,11 @@ const generateToken = (id, email) => {
 
 /**
  * Sends 6-digit OTP code dynamically to the entered recipient email address
+ * Supports mode: "signup" | "login" for account existence checks
  */
 export const sendOtp = async (req, res) => {
   try {
-    const { email, phone, identifier: rawId } = req.body || {};
+    const { email, phone, identifier: rawId, mode } = req.body || {};
     const rawInput = (email || phone || rawId || "").trim();
     const identifier = rawInput.toLowerCase();
 
@@ -28,6 +29,46 @@ export const sendOtp = async (req, res) => {
         success: false,
         emailSent: false,
         message: "Please enter a valid email address",
+      });
+    }
+
+    // Check account existence based on mode
+    let existingUser = null;
+    try {
+      await connectDB();
+      if (mongoose.connection.readyState >= 1) {
+        existingUser = await User.findOne({
+          email: new RegExp(`^${identifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+        });
+      }
+    } catch (err) {
+      console.warn("[sendOtp DB Lookup Notice]:", err?.message);
+    }
+
+    if (!existingUser) {
+      try {
+        const diskUsers = readCollection("users", []);
+        existingUser = diskUsers.find((u) => u.email && u.email.toLowerCase() === identifier);
+      } catch {
+        /* ignore file db error */
+      }
+    }
+
+    if (mode === "signup" && existingUser) {
+      return res.status(400).json({
+        success: false,
+        emailSent: false,
+        isAlreadyRegistered: true,
+        message: "This email address is already registered. Please Sign In instead.",
+      });
+    }
+
+    if (mode === "login" && !existingUser) {
+      return res.status(400).json({
+        success: false,
+        emailSent: false,
+        isNotRegistered: true,
+        message: "No account found with this email address. Please Sign Up to create an account.",
       });
     }
 
@@ -64,7 +105,7 @@ export const sendOtp = async (req, res) => {
       console.warn("[sendOtp DB Notice]:", dbErr?.message);
     }
 
-    const html = getOtpEmailTemplate(otpCode, "Verify Your Email Address", "login");
+    const html = getOtpEmailTemplate(otpCode, "Verify Your Email Address", mode || "login");
 
     // Dispatch email via Nodemailer to the exact recipient email entered
     const emailResult = await sendEmail({
@@ -103,11 +144,11 @@ export const sendOtp = async (req, res) => {
 };
 
 /**
- * Verifies 6-digit OTP code, registers new users or logs in existing users
+ * Verifies 6-digit OTP code, registers new users with full name or logs in existing users
  */
 export const verifyOtp = async (req, res) => {
   try {
-    const { email, phone, identifier: rawId, otp, hashToken } = req.body || {};
+    const { email, phone, identifier: rawId, otp, hashToken, name } = req.body || {};
     const rawInput = (email || phone || rawId || "").trim();
     const identifier = rawInput.toLowerCase();
 
@@ -213,9 +254,9 @@ export const verifyOtp = async (req, res) => {
     if (!user) {
       isNewUser = true;
       const nameFromEmail = identifier.includes("@") ? identifier.split("@")[0] : "User";
-      const formattedName = nameFromEmail
-        .replace(/[._]/g, " ")
-        .replace(/\b\w/g, (l) => l.toUpperCase());
+      const formattedName = name && String(name).trim().length > 0
+        ? String(name).trim()
+        : nameFromEmail.replace(/[._]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
       const newUserObj = {
         name: formattedName || "Daily User",

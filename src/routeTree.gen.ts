@@ -14,8 +14,10 @@ import { Route as AddressRouteImport } from './routes/address'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as HelpRouteImport } from './routes/help'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as MenuRouteImport } from './routes/menu'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OrderSuccessRouteImport } from './routes/order-success'
@@ -55,6 +57,11 @@ const HelpRoute = HelpRouteImport.update({
   path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HomeRoute = HomeRouteImport.update({
   id: '/home',
   path: '/home',
@@ -63,6 +70,11 @@ const HomeRoute = HomeRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MenuRoute = MenuRouteImport.update({
@@ -441,8 +453,10 @@ const rootRouteChildren: RootRouteChildren = {
   CartRoute: CartRoute,
   CheckoutRoute: CheckoutRoute,
   HelpRoute: HelpRoute,
+  AuthRoute: AuthRoute,
   HomeRoute: HomeRoute,
   LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
   MenuRoute: MenuRoute,
   NotificationsRoute: NotificationsRoute,
   OrderSuccessRoute: OrderSuccessRoute,
