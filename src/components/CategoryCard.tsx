@@ -1,8 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import type { Category } from "@/data/categories";
+import { products } from "@/data/products";
 
 export function CategoryCard({ category, index = 0 }: { category: Category; index?: number }) {
+  const matchingCount = products.filter(
+    (p) => p.category.toLowerCase() === category.slug.toLowerCase()
+  ).length;
+  const count = matchingCount > 0 ? matchingCount : category.items;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -20,7 +26,9 @@ export function CategoryCard({ category, index = 0 }: { category: Category; inde
           {category.emoji}
         </span>
         <span className="truncate text-center text-xs font-semibold">{category.name}</span>
-        <span className="text-[10px] text-muted-foreground">{category.items} items</span>
+        <span className="text-[10px] text-muted-foreground">
+          {count} {count === 1 ? "item" : "items"}
+        </span>
       </Link>
     </motion.div>
   );
