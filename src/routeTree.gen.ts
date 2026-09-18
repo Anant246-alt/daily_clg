@@ -146,6 +146,7 @@ const ProfileEditRoute = ProfileEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/address': typeof AddressRoute
+  '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/help': typeof HelpRoute
@@ -157,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/review': typeof ReviewRoute
   '/search': typeof SearchRoute
+  '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/wishlist': typeof WishlistRoute
   '/orders/$id': typeof OrdersIdRoute
@@ -168,6 +170,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/address': typeof AddressRoute
+  '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/help': typeof HelpRoute
@@ -179,6 +182,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/review': typeof ReviewRoute
   '/search': typeof SearchRoute
+  '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/wishlist': typeof WishlistRoute
   '/orders/$id': typeof OrdersIdRoute
@@ -191,6 +195,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/address': typeof AddressRoute
+  '/auth': typeof AuthRoute
   '/cart': typeof CartRoute
   '/checkout': typeof CheckoutRoute
   '/help': typeof HelpRoute
@@ -202,6 +207,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/review': typeof ReviewRoute
   '/search': typeof SearchRoute
+  '/signup': typeof SignupRoute
   '/terms': typeof TermsRoute
   '/wishlist': typeof WishlistRoute
   '/orders/$id': typeof OrdersIdRoute
@@ -215,6 +221,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/address'
+    | '/auth'
     | '/cart'
     | '/checkout'
     | '/help'
@@ -226,6 +233,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/review'
     | '/search'
+    | '/signup'
     | '/terms'
     | '/wishlist'
     | '/orders/$id'
@@ -237,6 +245,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/address'
+    | '/auth'
     | '/cart'
     | '/checkout'
     | '/help'
@@ -248,6 +257,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/review'
     | '/search'
+    | '/signup'
     | '/terms'
     | '/wishlist'
     | '/orders/$id'
@@ -259,6 +269,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/address'
+    | '/auth'
     | '/cart'
     | '/checkout'
     | '/help'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/review'
     | '/search'
+    | '/signup'
     | '/terms'
     | '/wishlist'
     | '/orders/$id'
@@ -316,6 +328,13 @@ declare module '@tanstack/react-router' {
       path: '/address'
       fullPath: '/address'
       preLoaderRoute: typeof AddressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cart': {
@@ -393,6 +412,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
