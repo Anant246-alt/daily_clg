@@ -29,6 +29,7 @@ import { useOrders } from "@/context/OrderContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { products as initialProducts, type Product } from "@/data/products";
+import { fetchAdminUsers, type AdminUser } from "@/api/admin";
 import { currency } from "@/utils/format";
 import { cn } from "@/lib/utils";
 
@@ -65,11 +66,52 @@ function AdminPage() {
   const [orderFilter, setOrderFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [productList, setProductList] = useState<Product[]>(initialProducts);
+  const [registeredUsers, setRegisteredUsers] = useState<AdminUser[]>([]);
 
   // Sync orders with OrderContext
   useEffect(() => {
     setAdminOrders(orders);
   }, [orders]);
+
+  // Fetch all registered customer accounts from MongoDB Atlas & backend
+  useEffect(() => {
+    let isMounted = true;
+    void (async () => {
+      try {
+        const users = await fetchAdminUsers();
+        if (isMounted) {
+          if (Array.isArray(users) && users.length > 0) {
+            setRegisteredUsers(users);
+          } else if (user) {
+            setRegisteredUsers([
+              {
+                id: user.id || "u_me",
+                name: user.name,
+                email: user.email,
+                phone: user.phone || "+91 98765 43210",
+                avatar: user.avatar,
+              },
+            ]);
+          }
+        }
+      } catch {
+        if (isMounted && user) {
+          setRegisteredUsers([
+            {
+              id: user.id || "u_me",
+              name: user.name,
+              email: user.email,
+              phone: user.phone || "+91 98765 43210",
+              avatar: user.avatar,
+            },
+          ]);
+        }
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -264,7 +306,7 @@ function AdminPage() {
             { id: "overview", label: "Overview & Analytics", icon: FiTrendingUp },
             { id: "orders", label: `Orders (${adminOrders.length})`, icon: FiPackage },
             { id: "products", label: `Menu Items (${productList.length})`, icon: FiGrid },
-            { id: "customers", label: "Registered Users", icon: FiUsers },
+            { id: "customers", label: `Registered Users (${registeredUsers.length})`, icon: FiUsers },
             { id: "reviews", label: "Reviews & Feedback", icon: FiStar },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -319,7 +361,7 @@ function AdminPage() {
               <AdminMetricCard
                 icon={FiUsers}
                 label="Registered Users"
-                value={user ? 1 : 0}
+                value={registeredUsers.length}
                 subtext="Active customer accounts"
                 color="text-purple-500"
                 bgColor="bg-purple-500/10"
@@ -577,27 +619,71 @@ function AdminPage() {
         {/* TAB 4: REGISTERED CUSTOMERS */}
         {activeTab === "customers" && (
           <FadeIn className="space-y-4">
-            <div>
-              <h2 className="text-lg font-extrabold">Registered Customer Directory</h2>
-              <p className="text-xs text-muted-foreground">MongoDB Atlas customer profiles</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-extrabold">Registered Customer Directory</h2>
+                <p className="text-xs text-muted-foreground">MongoDB Atlas & customer accounts ({registeredUsers.length})</p>
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const users = await fetchAdminUsers();
+                    if (Array.isArray(users) && users.length > 0) {
+                      setRegisteredUsers(users);
+                      toast.success(`Refreshed ${users.length} customer accounts`);
+                    }
+                  } catch {
+                    toast.error("Failed to refresh users list");
+                  }
+                }}
+                className="rounded-2xl border border-border bg-background px-3.5 py-1.5 text-xs font-bold hover:bg-muted transition flex items-center gap-1.5"
+              >
+                <FiRefreshCw className="size-3.5" /> Refresh List
+              </button>
             </div>
 
-            <div className="rounded-3xl border border-border bg-card p-5 space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="grid size-12 place-items-center rounded-2xl bg-primary text-primary-foreground text-lg font-extrabold">
-                  {(user?.name ?? "U").slice(0, 1).toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-base">{user?.name ?? "Daily User"}</h3>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <FiMail /> {user?.email ?? "anantbhattd@gmail.com"}
-                  </p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                    <FiPhone /> {user?.phone ?? "+91 98765 43210"}
-                  </p>
-                </div>
+            {registeredUsers.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {registeredUsers.map((u, index) => (
+                  <div
+                    key={u.id || index}
+                    className="flex items-center gap-4 rounded-3xl border border-border bg-card p-4 shadow-sm hover:border-primary/40 transition"
+                  >
+                    {u.avatar ? (
+                      <img src={u.avatar} alt={u.name} className="size-12 rounded-2xl object-cover shrink-0" />
+                    ) : (
+                      <div className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary text-lg font-black shrink-0">
+                        {(u.name || u.email || "U").slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="font-extrabold text-sm truncate">{u.name || "Registered Customer"}</h3>
+                        {u.email === user?.email && (
+                          <span className="rounded-md bg-primary-soft px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                            You
+                          </span>
+                        )}
+                      </div>
+                      {u.email && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                          <FiMail className="size-3 shrink-0" /> <span className="truncate">{u.email}</span>
+                        </p>
+                      )}
+                      {u.phone && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                          <FiPhone className="size-3 shrink-0" /> <span className="truncate">{u.phone}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            ) : (
+              <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
+                No customer accounts found.
+              </div>
+            )}
           </FadeIn>
         )}
 

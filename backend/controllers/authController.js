@@ -326,3 +326,59 @@ export const getMe = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getAllUsers = async (req, res, next) => {
+  try {
+    let mongoUsers = [];
+    try {
+      await connectDB();
+      if (mongoose.connection.readyState >= 1) {
+        mongoUsers = await User.find({}).select("-password -__v").lean();
+      }
+    } catch (err) {
+      console.warn("[getAllUsers DB Notice]:", err?.message);
+    }
+
+    const diskUsers = readCollection("users", []);
+    const mergedMap = new Map();
+
+    for (const u of mongoUsers) {
+      const emailKey = String(u.email || "").toLowerCase();
+      if (emailKey) {
+        mergedMap.set(emailKey, {
+          id: u._id ? u._id.toString() : u.id,
+          _id: u._id ? u._id.toString() : u.id,
+          name: u.name || "Daily User",
+          email: u.email,
+          phone: u.phone || "+91 98765 43210",
+          avatar: u.avatar || "",
+          createdAt: u.createdAt || new Date(),
+        });
+      }
+    }
+
+    for (const u of diskUsers) {
+      const emailKey = String(u.email || "").toLowerCase();
+      if (emailKey && !mergedMap.has(emailKey)) {
+        mergedMap.set(emailKey, {
+          id: u._id || u.id || `u_${Math.random()}`,
+          _id: u._id || u.id || `u_${Math.random()}`,
+          name: u.name || "Daily User",
+          email: u.email,
+          phone: u.phone || "+91 98765 43210",
+          avatar: u.avatar || "",
+          createdAt: u.createdAt || new Date(),
+        });
+      }
+    }
+
+    const usersList = Array.from(mergedMap.values());
+    return res.status(200).json({
+      success: true,
+      count: usersList.length,
+      users: usersList,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
