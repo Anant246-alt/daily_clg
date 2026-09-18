@@ -1,7 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import type { Order } from "@/data/orders";
+import { products, type Product } from "@/data/products";
+import { useCart } from "@/context/CartContext";
 import { currency } from "@/utils/format";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +15,44 @@ const statusStyles: Record<string, string> = {
 };
 
 export function OrderCard({ order }: { order: Order }) {
+  const { addMultipleItems } = useCart();
+  const navigate = useNavigate();
+
+  const handleRepeatOrder = () => {
+    const itemsToAdd: { product: Product; qty: number }[] = order.items.map((item) => {
+      const foundProduct = products.find(
+        (p) => p.id === item.id || p.name.toLowerCase() === item.name.toLowerCase()
+      );
+      if (foundProduct) {
+        return { product: foundProduct, qty: item.qty };
+      }
+      return {
+        product: {
+          id: item.id,
+          name: item.name,
+          category: "sandwiches",
+          image: "/sandwich.jpg",
+          gallery: ["/sandwich.jpg"],
+          price: item.price,
+          mrp: Math.round(item.price * 1.25),
+          rating: 4.5,
+          reviews: 100,
+          veg: true,
+          bestSeller: false,
+          popular: false,
+          description: item.name,
+          ingredients: [],
+          nutrition: [],
+        },
+        qty: item.qty,
+      };
+    });
+
+    addMultipleItems(itemsToAdd);
+    toast.success("Order items added to your cart!");
+    navigate({ to: "/cart" });
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -41,15 +81,15 @@ export function OrderCard({ order }: { order: Order }) {
         <span className="font-extrabold">{currency(order.total)}</span>
         <div className="flex gap-2">
           <button
-            onClick={() => toast.success("Items added to cart again")}
-            className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold"
+            onClick={handleRepeatOrder}
+            className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold hover:bg-accent transition cursor-pointer"
           >
             Repeat order
           </button>
           <Link
             to="/orders/$id"
             params={{ id: order.id }}
-            className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground"
+            className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground hover:opacity-90 transition"
           >
             View details
           </Link>

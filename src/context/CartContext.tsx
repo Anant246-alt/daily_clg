@@ -23,6 +23,7 @@ type CartValue = {
   total: number;
   promo: string | null;
   addItem: (p: Product, qty?: number) => void;
+  addMultipleItems: (items: { product: Product; qty: number }[]) => void;
   removeItem: (id: string) => void;
   setQty: (id: string, qty: number) => void;
   qtyOf: (id: string) => number;
@@ -49,6 +50,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
           { id: p.id, name: p.name, image: p.image, price: p.price, mrp: p.mrp, veg: p.veg, qty },
         ];
       }),
+    [setItems],
+  );
+
+  const addMultipleItems = useCallback(
+    (newItems: { product: Product; qty: number }[]) => {
+      setItems((prev) => {
+        const next = [...prev];
+        for (const { product: p, qty } of newItems) {
+          const idx = next.findIndex((i) => i.id === p.id);
+          if (idx >= 0) {
+            next[idx] = { ...next[idx], qty: next[idx].qty + qty };
+          } else {
+            next.push({ id: p.id, name: p.name, image: p.image, price: p.price, mrp: p.mrp, veg: p.veg, qty });
+          }
+        }
+        return next;
+      });
+    },
     [setItems],
   );
 
@@ -95,6 +114,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       total: Math.max(0, subtotal - discount + gst + delivery),
       promo,
       addItem,
+      addMultipleItems,
       removeItem,
       setQty,
       qtyOf: (id) => items.find((i) => i.id === id)?.qty ?? 0,
@@ -102,7 +122,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clearPromo,
       clearCart,
     };
-  }, [items, promo, addItem, removeItem, setQty, applyPromo, clearPromo, clearCart]);
+  }, [items, promo, addItem, addMultipleItems, removeItem, setQty, applyPromo, clearPromo, clearCart]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

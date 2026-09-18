@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { createFileRoute, notFound } from "@tanstack/react-router";
-import { FiDownload, FiMapPin, FiCreditCard, FiPrinter, FiX, FiCheckCircle, FiFileText, FiShield } from "react-icons/fi";
+import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
+import { FiDownload, FiMapPin, FiCreditCard, FiPrinter, FiX, FiCheckCircle, FiFileText, FiShield, FiRefreshCw } from "react-icons/fi";
 import { toast } from "sonner";
 import { AppShell } from "@/layouts/AppShell";
 import { PageTransition } from "@/components/PageTransition";
 import { orders as seedOrders, type Order } from "@/data/orders";
+import { products, type Product } from "@/data/products";
+import { useCart } from "@/context/CartContext";
 import { currency, DELIVERY_FEE } from "@/utils/format";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +49,43 @@ export const Route = createFileRoute("/orders/$id")({
 function OrderDetailsPage() {
   const order = Route.useLoaderData() as Order;
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const { addMultipleItems } = useCart();
+  const navigate = useNavigate();
+
+  const handleRepeatOrder = () => {
+    const itemsToAdd: { product: Product; qty: number }[] = order.items.map((item) => {
+      const foundProduct = products.find(
+        (p) => p.id === item.id || p.name.toLowerCase() === item.name.toLowerCase()
+      );
+      if (foundProduct) {
+        return { product: foundProduct, qty: item.qty };
+      }
+      return {
+        product: {
+          id: item.id,
+          name: item.name,
+          category: "sandwiches",
+          image: "/sandwich.jpg",
+          gallery: ["/sandwich.jpg"],
+          price: item.price,
+          mrp: Math.round(item.price * 1.25),
+          rating: 4.5,
+          reviews: 100,
+          veg: true,
+          bestSeller: false,
+          popular: false,
+          description: item.name,
+          ingredients: [],
+          nutrition: [],
+        },
+        qty: item.qty,
+      };
+    });
+
+    addMultipleItems(itemsToAdd);
+    toast.success("Order items added to your cart!");
+    navigate({ to: "/cart" });
+  };
 
   const subtotal = order.items.reduce((s, i) => s + i.price * i.qty, 0);
   const gst = Math.round(subtotal * 0.05);
@@ -194,12 +233,20 @@ TOTAL PAID:     ₹${order.total.toFixed(2)}
               </div>
             </div>
 
-            <button
-              onClick={handleDownloadInvoice}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-[var(--shadow-soft)] hover:opacity-90 transition cursor-pointer"
-            >
-              <FiDownload /> Download invoice
-            </button>
+            <div className="flex flex-col gap-2.5">
+              <button
+                onClick={handleRepeatOrder}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-card py-3.5 font-bold text-foreground hover:bg-accent transition cursor-pointer"
+              >
+                <FiRefreshCw /> Repeat order
+              </button>
+              <button
+                onClick={handleDownloadInvoice}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-bold text-primary-foreground shadow-[var(--shadow-soft)] hover:opacity-90 transition cursor-pointer"
+              >
+                <FiDownload /> Download invoice
+              </button>
+            </div>
           </div>
         </div>
 
