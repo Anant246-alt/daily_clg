@@ -18,6 +18,7 @@ import {
   FiMoon,
   FiSun,
   FiArrowLeft,
+  FiStar,
 } from "react-icons/fi";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -27,6 +28,7 @@ import { greeting } from "@/utils/format";
 import { cn } from "@/lib/utils";
 
 const navItems = [
+  { to: "/dashboard", label: "Dashboard", icon: FiGrid },
   { to: "/home", label: "Home", icon: FiHome },
   { to: "/menu", label: "Menu", icon: FiGrid },
   { to: "/orders", label: "Orders", icon: FiClipboard },
@@ -37,6 +39,7 @@ const navItems = [
 const menuLinks = [
   ...navItems,
   { to: "/wishlist", label: "Wishlist", icon: FiHeart },
+  { to: "/review", label: "Reviews", icon: FiStar },
   { to: "/help", label: "Help Center", icon: FiHelpCircle },
   { to: "/privacy", label: "Privacy Policy", icon: FiShield },
   { to: "/terms", label: "Terms & Conditions", icon: FiFileText },
