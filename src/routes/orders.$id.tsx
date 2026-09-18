@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/orders/$id")({
   loader: ({ params }) => {
-    let ordersList = seedOrders;
+    let ordersList: Order[] = [];
     try {
       const saved = localStorage.getItem("daily.orders");
       if (saved) {
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/orders/$id")({
         o.id.toLowerCase() === params.id.toLowerCase() ||
         o.number.toLowerCase() === params.id.toLowerCase() ||
         o.number.replace("#", "").toLowerCase() === params.id.toLowerCase()
-    ) || seedOrders.find((o) => o.id === params.id || o.number === params.id);
+    );
 
     if (!order) throw notFound();
     return order;
