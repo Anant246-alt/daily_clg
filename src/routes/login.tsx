@@ -65,16 +65,19 @@ function LoginPage() {
     try {
       const res = await sendOtp(email);
       const recipient = res?.email || email;
-      toast.success("Verification Code Sent", {
+      toast.success("OTP Sent Successfully", {
         description: `We sent a 6-digit verification code to ${recipient}. Please check your email inbox.`,
       });
-    } catch (err: any) {
-      console.warn("[Auth Warning] OTP call:", err);
-      toast.info(`Verification code sent to ${email}. Please check your email inbox.`);
-    } finally {
-      setLoading(false);
       setStep("otp");
       setSeconds(30);
+    } catch (err: any) {
+      const errorMsg = err.message || "Email delivery failure. Could not send OTP to the entered email address.";
+      setError(errorMsg);
+      toast.error("Email Delivery Failure", {
+        description: errorMsg,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,11 +94,23 @@ function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      await signIn(email, code);
-      toast.success("Welcome to Daily!");
+      const res = await signIn(email, code);
+      if (res?.isNewUser) {
+        toast.success("Successful Registration!", {
+          description: "Your new account has been created. Welcome to Daily!",
+        });
+      } else {
+        toast.success("Successful Login!", {
+          description: "Welcome back to Daily!",
+        });
+      }
       void navigate({ to: "/home" });
     } catch (err: any) {
-      setError(err.message || "Invalid OTP code, please check your email inbox and try again.");
+      const errorMsg = err.message || "Invalid or expired OTP code. Please check your email inbox and try again.";
+      setError(errorMsg);
+      toast.error("Invalid or Expired OTP", {
+        description: errorMsg,
+      });
     } finally {
       setLoading(false);
     }
@@ -220,8 +235,16 @@ function LoginPage() {
                   disabled={seconds > 0}
                   onClick={async () => {
                     setSeconds(30);
-                    await sendOtp(email);
-                    toast.success("OTP Verification Code Resent");
+                    try {
+                      await sendOtp(email);
+                      toast.success("OTP Sent Successfully", {
+                        description: `Verification code resent to ${email}.`,
+                      });
+                    } catch (err: any) {
+                      toast.error("Email Delivery Failure", {
+                        description: err.message || "Failed to resend OTP code.",
+                      });
+                    }
                   }}
                   className="font-bold text-primary disabled:text-muted-foreground cursor-pointer"
                 >

@@ -8,10 +8,13 @@ export const sendOtp = async (email: string) => {
     if (res.data?.hashToken) {
       lastHashToken = res.data.hashToken;
     }
+    if (res.data && res.data.success === false) {
+      throw new Error(res.data.message || res.data.error || "Email delivery failure");
+    }
     return res.data;
   } catch (error: any) {
-    console.warn("[Auth Warning] API call notice:", error?.message);
-    return { success: true, message: "OTP code generated" };
+    const msg = error.response?.data?.message || error.response?.data?.error || error.message || "Failed to send OTP email.";
+    throw new Error(msg);
   }
 };
 
@@ -20,11 +23,11 @@ export const verifyOtp = async (email: string, otp: string) => {
   try {
     const res = await api.post("/auth/verify-otp", { email, otp, hashToken: lastHashToken });
     if (res.data && res.data.success === false) {
-      throw new Error(res.data.message || "Invalid OTP code. Please enter the exact code.");
+      throw new Error(res.data.message || "Invalid or expired OTP code.");
     }
     return res.data;
   } catch (error: any) {
-    const msg = error.response?.data?.message || error.message || "Invalid OTP code. Please try again.";
+    const msg = error.response?.data?.message || error.message || "OTP verification failed. Please try again.";
     throw new Error(msg);
   }
 };

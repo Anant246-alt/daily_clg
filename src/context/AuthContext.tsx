@@ -5,11 +5,18 @@ import * as profileApi from "@/api/profile";
 
 export type User = { id: string; name: string; email: string; phone: string; avatar?: string };
 
+export type SignInResult = {
+  isNewUser?: boolean;
+  message?: string;
+  user?: User;
+  token?: string;
+};
+
 type AuthValue = {
   user: User | null;
   isAuthenticated: boolean;
   hydrated: boolean;
-  signIn: (email: string, otp: string) => Promise<void>;
+  signIn: (email: string, otp: string) => Promise<SignInResult>;
   signOut: () => void;
   updateUser: (patch: Partial<User>) => void;
   refreshProfile: () => Promise<void>;
@@ -56,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         /* fallback to verifyOtp user */
       }
+      return res;
     },
     [setUser],
   );
