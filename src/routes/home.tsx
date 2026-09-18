@@ -159,13 +159,19 @@ function HomePage() {
               </Link>
             }
           >
-            <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4">
-              {reviewsList.map((r) => (
-                <div key={r.id} className="w-72 shrink-0 sm:w-auto">
-                  <ReviewCard review={r} />
-                </div>
-              ))}
-            </div>
+            {reviewsList.length > 0 ? (
+              <div className="no-scrollbar flex gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-2 lg:grid-cols-4">
+                {reviewsList.map((r) => (
+                  <div key={r.id} className="w-72 shrink-0 sm:w-auto">
+                    <ReviewCard review={r} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-3xl border border-dashed border-border bg-card p-6 text-center text-xs font-medium text-muted-foreground">
+                No customer reviews yet. Be the first to share your feedback!
+              </div>
+            )}
           </Section>
         </div>
       </PageTransition>
