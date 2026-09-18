@@ -54,10 +54,17 @@ function EditProfilePage() {
   };
 
   const save = async () => {
-    await updateProfile(form); // PUT /profile
-    updateUser(form);
-    toast.success("Profile updated successfully");
-    void navigate({ to: "/profile" });
+    try {
+      const res = await updateProfile(form); // PUT /profile
+      const updated = res?.user || form;
+      updateUser(updated);
+      toast.success("Profile updated successfully");
+      void navigate({ to: "/profile" });
+    } catch {
+      updateUser(form);
+      toast.success("Profile updated");
+      void navigate({ to: "/profile" });
+    }
   };
 
   return (

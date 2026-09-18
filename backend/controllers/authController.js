@@ -168,17 +168,20 @@ export const verifyOtp = async (req, res) => {
       });
     }
 
-    // Get or Create User with Stable Deterministic ID & Persistent Profile Retrieval
+    // Get or Create User with Persistent Profile Retrieval from MongoDB Atlas
     const cleanId = identifier.replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
     const stableUserId = `u1_${cleanId}`;
     let user = null;
 
     try {
+      await connectDB();
       if (mongoose.connection.readyState >= 1) {
-        user = await User.findOne({ $or: [{ email: identifier }, { phone: identifier }] });
+        user = await User.findOne({
+          email: new RegExp(`^${identifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
+        });
       }
-    } catch {
-      /* ignore db error */
+    } catch (err) {
+      console.warn("[verifyOtp] MongoDB Atlas lookup notice:", err?.message);
     }
 
     const diskUsers = readCollection("users", []);
@@ -201,9 +204,7 @@ export const verifyOtp = async (req, res) => {
         .replace(/\b\w/g, (l) => l.toUpperCase());
 
       const newUserObj = {
-        _id: stableUserId,
-        id: stableUserId,
-        name: formattedName || "Aarav Mehta",
+        name: formattedName || "Anant Bhatt",
         email: identifier.includes("@") ? identifier : `user_${Date.now()}@daily.com`,
         phone: identifier.includes("@") ? "+91 98765 43210" : identifier,
         avatar: "",
@@ -212,29 +213,24 @@ export const verifyOtp = async (req, res) => {
       try {
         if (mongoose.connection.readyState >= 1) {
           user = await User.create(newUserObj);
+          console.log(`[MongoDB Atlas User Created] ${user.email} (${user.name})`);
         }
       } catch {
         /* ignore db error */
       }
 
       if (!user) {
-        user = newUserObj;
+        user = { ...newUserObj, _id: stableUserId, id: stableUserId };
       }
 
-      insertDocument("users", user);
-    } else {
-      if (diskUser) {
-        user = {
-          ...user,
-          name: diskUser.name || user.name,
-          phone: diskUser.phone || user.phone,
-          email: diskUser.email || user.email,
-          avatar: diskUser.avatar || user.avatar || "",
-        };
+      try {
+        insertDocument("users", user);
+      } catch {
+        /* ignore file db error */
       }
     }
 
-    const userIdToUse = user.id || user._id || stableUserId;
+    const userIdToUse = user._id ? user._id.toString() : user.id || stableUserId;
     const token = generateToken(userIdToUse, user.email);
 
     return res.status(200).json({
@@ -242,6 +238,7 @@ export const verifyOtp = async (req, res) => {
       token,
       user: {
         id: userIdToUse,
+        _id: userIdToUse,
         name: user.name,
         email: user.email,
         phone: user.phone || "+91 98765 43210",
