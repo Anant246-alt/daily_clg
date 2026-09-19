@@ -230,7 +230,6 @@ function SignUpPage() {
                         onChange={(e) => {
                           setEmail(e.target.value);
                           setError("");
-                          setAlreadyRegistered(false);
                         }}
                         onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
                         placeholder="your@email.com"
@@ -246,27 +245,16 @@ function SignUpPage() {
                     </div>
                   )}
 
-                  {alreadyRegistered && (
-                    <Link
-                      to="/login"
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary bg-primary/10 py-3 text-xs font-bold text-primary hover:bg-primary/20 transition cursor-pointer"
-                    >
-                      Sign In Now <FiArrowRight />
-                    </Link>
-                  )}
-
-                  {!alreadyRegistered && (
-                    <motion.button
-                      type="button"
-                      whileTap={{ scale: 0.97 }}
-                      onClick={handleSendOtp}
-                      disabled={loading}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-70 cursor-pointer shadow-md hover:opacity-90 transition"
-                    >
-                      {loading ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : null}
-                      Create Free Account <FiArrowRight />
-                    </motion.button>
-                  )}
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleSendOtp}
+                    disabled={loading}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-70 cursor-pointer shadow-md hover:opacity-90 transition"
+                  >
+                    {loading ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : null}
+                    Create Free Account <FiArrowRight />
+                  </motion.button>
 
                   <p className="text-center text-[11px] text-muted-foreground pt-1">
                     By registering, you agree to our Terms of Use and Privacy Policy.

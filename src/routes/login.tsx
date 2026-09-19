@@ -30,7 +30,6 @@ function LoginPage() {
   const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
-  const [notRegistered, setNotRegistered] = useState(false);
   const [loading, setLoading] = useState(false);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [seconds, setSeconds] = useState(30);
@@ -60,7 +59,6 @@ function LoginPage() {
 
   /** Send OTP for User Login */
   const handleSendOtp = async () => {
-    setNotRegistered(false);
     if (!inputValidEmail(email)) return setError("Please enter a valid email address");
 
     setError("");
@@ -208,7 +206,6 @@ function LoginPage() {
                         onChange={(e) => {
                           setEmail(e.target.value);
                           setError("");
-                          setNotRegistered(false);
                         }}
                         onKeyDown={(e) => e.key === "Enter" && handleSendOtp()}
                         placeholder="your@email.com"
@@ -224,27 +221,16 @@ function LoginPage() {
                     </div>
                   )}
 
-                  {notRegistered && (
-                    <Link
-                      to="/signup"
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary bg-primary/10 py-3 text-xs font-bold text-primary hover:bg-primary/20 transition cursor-pointer"
-                    >
-                      Sign Up Now <FiArrowRight />
-                    </Link>
-                  )}
-
-                  {!notRegistered && (
-                    <motion.button
-                      type="button"
-                      whileTap={{ scale: 0.97 }}
-                      onClick={handleSendOtp}
-                      disabled={loading}
-                      className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-70 cursor-pointer shadow-md hover:opacity-90 transition"
-                    >
-                      {loading ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : null}
-                      Send OTP <FiArrowRight />
-                    </motion.button>
-                  )}
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={handleSendOtp}
+                    disabled={loading}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground disabled:opacity-70 cursor-pointer shadow-md hover:opacity-90 transition"
+                  >
+                    {loading ? <Spinner className="border-primary-foreground/40 border-t-primary-foreground" /> : null}
+                    Send OTP <FiArrowRight />
+                  </motion.button>
 
                   <p className="text-center text-[11px] text-muted-foreground pt-1">
                     By continuing, you agree to our Terms of Use and Privacy Policy.
