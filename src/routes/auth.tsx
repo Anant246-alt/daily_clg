@@ -18,13 +18,60 @@ export const Route = createFileRoute("/auth")({
 
 function AuthLandingPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, hydrated } = useAuth();
+  const { user, isAuthenticated, hydrated, signOut } = useAuth();
 
   useEffect(() => {
     if (hydrated && isAuthenticated) {
       void navigate({ to: "/home" });
     }
   }, [hydrated, isAuthenticated, navigate]);
+
+  if (isAuthenticated && user) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-5 py-10">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md space-y-6 rounded-3xl border border-border bg-card p-8 text-center shadow-[var(--shadow-soft)]"
+        >
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-2xl font-black text-primary shadow-sm">
+            {user.avatar ? (
+              <img src={user.avatar} alt={user.name} className="size-full rounded-2xl object-cover" />
+            ) : (
+              (user.name || "U").slice(0, 1).toUpperCase()
+            )}
+          </div>
+          <div className="space-y-1">
+            <span className="rounded-full bg-primary-soft px-3 py-1 text-xs font-bold text-primary border border-primary/20">
+              Active Session
+            </span>
+            <h1 className="text-2xl font-black pt-2">Already Signed In</h1>
+            <p className="text-xs text-muted-foreground">
+              You are currently logged in as <span className="font-extrabold text-foreground">{user.name}</span> ({user.email}).
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <Link
+              to="/home"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90 transition cursor-pointer"
+            >
+              Continue to Store <FiArrowRight />
+            </Link>
+            <button
+              onClick={() => {
+                signOut();
+                toast.info("Signed out from your account.");
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-background py-3 text-xs font-bold text-destructive hover:bg-destructive/10 transition cursor-pointer"
+            >
+              Sign Out / Switch Account
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col justify-center bg-background px-5 py-10">

@@ -54,24 +54,6 @@ export const sendOtp = async (req, res) => {
       }
     }
 
-    if (mode === "signup" && existingUser) {
-      return res.status(400).json({
-        success: false,
-        emailSent: false,
-        isAlreadyRegistered: true,
-        message: "This email address is already registered. Please Sign In instead.",
-      });
-    }
-
-    if (mode === "login" && !existingUser) {
-      return res.status(400).json({
-        success: false,
-        emailSent: false,
-        isNotRegistered: true,
-        message: "No account found with this email address. Please Sign Up to create an account.",
-      });
-    }
-
     // Generate dynamic 6-digit random OTP code
     const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAtMs = Date.now() + 10 * 60 * 1000; // 10 minutes

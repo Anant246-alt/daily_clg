@@ -26,7 +26,7 @@ const inputValidEmail = (v: string) => {
 
 function SignUpPage() {
   const navigate = useNavigate();
-  const { signIn, isAuthenticated, hydrated } = useAuth();
+  const { user, signIn, signOut, isAuthenticated, hydrated } = useAuth();
   const [step, setStep] = useState<"details" | "otp">("details");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -45,13 +45,13 @@ function SignUpPage() {
   }, [hydrated, isAuthenticated, navigate]);
 
   useEffect(() => {
-    if (step === "details") {
+    if (step === "details" && !isAuthenticated) {
       const timer = setTimeout(() => {
         nameInputRef.current?.focus();
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [step]);
+  }, [step, isAuthenticated]);
 
   useEffect(() => {
     if (step !== "otp" || seconds === 0) return;
@@ -59,7 +59,7 @@ function SignUpPage() {
     return () => clearTimeout(t);
   }, [step, seconds]);
 
-  /** Send OTP for New User Registration */
+  /** Send OTP for Registration */
   const handleSendOtp = async () => {
     setAlreadyRegistered(false);
     if (!name.trim()) return setError("Please enter your full name");
@@ -76,21 +76,60 @@ function SignUpPage() {
       setStep("otp");
       setSeconds(30);
     } catch (err: any) {
-      if (err.isAlreadyRegistered) {
-        setAlreadyRegistered(true);
-        setError("This email address is already registered. Please Sign In instead.");
-        toast.error("Email Already Registered", {
-          description: "This email is already registered. Please Sign In instead.",
-        });
-      } else {
-        const errorMsg = err.message || "Email delivery failure. Could not send OTP to the entered email address.";
-        setError(errorMsg);
-        toast.error("Email Delivery Failure", { description: errorMsg });
-      }
+      const errorMsg = err.message || "Could not send OTP to the entered email address. Please try again.";
+      setError(errorMsg);
+      toast.error("Email Delivery Notice", { description: errorMsg });
     } finally {
       setLoading(false);
     }
   };
+
+  if (isAuthenticated && user) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-5 py-10">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-md space-y-6 rounded-3xl border border-border bg-card p-8 text-center shadow-[var(--shadow-soft)]"
+        >
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-2xl font-black text-primary shadow-sm">
+            {user.avatar ? (
+              <img src={user.avatar} alt={user.name} className="size-full rounded-2xl object-cover" />
+            ) : (
+              (user.name || "U").slice(0, 1).toUpperCase()
+            )}
+          </div>
+          <div className="space-y-1">
+            <span className="rounded-full bg-primary-soft px-3 py-1 text-xs font-bold text-primary border border-primary/20">
+              Active Session
+            </span>
+            <h1 className="text-2xl font-black pt-2">Already Signed In</h1>
+            <p className="text-xs text-muted-foreground">
+              You are currently logged in as <span className="font-extrabold text-foreground">{user.name}</span> ({user.email}).
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <Link
+              to="/home"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 text-xs font-bold text-primary-foreground shadow-sm hover:opacity-90 transition cursor-pointer"
+            >
+              Continue to Store <FiArrowRight />
+            </Link>
+            <button
+              onClick={() => {
+                signOut();
+                toast.info("Signed out from your account.");
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-background py-3 text-xs font-bold text-destructive hover:bg-destructive/10 transition cursor-pointer"
+            >
+              Sign Out / Switch Account
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   const handleOtpChange = (i: number, v: string) => {
     const digit = v.replace(/\D/g, "").slice(-1);
