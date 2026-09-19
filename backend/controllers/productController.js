@@ -92,13 +92,25 @@ const fallbackProducts = [
   },
 ];
 
+import { readCollection, insertDocument } from "../config/fileDb.js";
+
 export const getProducts = async (req, res, next) => {
   try {
     let products = [];
     try {
-      products = await Product.find().select("-__v");
+      products = await Product.find().select("-__v").lean();
     } catch {
       /* silent disk fallback */
+    }
+    if (!products || products.length === 0) {
+      try {
+        const diskProds = readCollection("products.json", []);
+        if (Array.isArray(diskProds) && diskProds.length > 0) {
+          products = diskProds;
+        }
+      } catch {
+        /* fallback */
+      }
     }
     if (!products || products.length === 0) {
       products = fallbackProducts;
@@ -106,6 +118,24 @@ export const getProducts = async (req, res, next) => {
     return res.status(200).json(products);
   } catch (error) {
     return res.status(200).json(fallbackProducts);
+  }
+};
+
+export const updateProductsList = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const updatedList = Array.isArray(body) ? body : body.products;
+    if (Array.isArray(updatedList) && updatedList.length > 0) {
+      try {
+        insertDocument("products.json", updatedList, true);
+      } catch {
+        /* ignore file db error */
+      }
+      return res.status(200).json({ success: true, count: updatedList.length, message: "Products updated successfully" });
+    }
+    return res.status(400).json({ success: false, message: "Invalid products array" });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to update products" });
   }
 };
 
@@ -117,6 +147,14 @@ export const getProductById = async (req, res, next) => {
       product = await Product.findOne({ id }).select("-__v");
     } catch {
       /* silent disk fallback */
+    }
+    if (!product) {
+      try {
+        const diskProds = readCollection("products.json", []);
+        product = diskProds.find((p) => p.id === id) || null;
+      } catch {
+        /* fallback */
+      }
     }
     if (!product) {
       product = fallbackProducts.find((p) => p.id === id) || null;
@@ -139,6 +177,14 @@ export const getProductsByCategory = async (req, res, next) => {
       products = await Product.find({ category: slug }).select("-__v");
     } catch {
       /* silent disk fallback */
+    }
+    if (!products || products.length === 0) {
+      try {
+        const diskProds = readCollection("products.json", []);
+        products = diskProds.filter((p) => p.category === slug);
+      } catch {
+        /* fallback */
+      }
     }
     if (!products || products.length === 0) {
       products = fallbackProducts.filter((p) => p.category === slug);

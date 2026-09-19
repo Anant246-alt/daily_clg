@@ -353,5 +353,38 @@ export const products: Product[] = [
   },
 ];
 
-export const getProduct = (id: string) => products.find((p) => p.id === id);
-export const byCategory = (slug: string) => products.filter((p) => p.category === slug);
+export function getStoredProducts(): Product[] {
+  if (typeof window === "undefined") return products;
+  try {
+    const raw = localStorage.getItem("daily.products");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch {
+    /* ignore parsing error */
+  }
+  return products;
+}
+
+export function saveStoredProducts(updatedProducts: Product[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("daily.products", JSON.stringify(updatedProducts));
+    window.dispatchEvent(new Event("daily.productsUpdated"));
+  } catch {
+    /* ignore storage error */
+  }
+}
+
+export const getProduct = (id: string) => {
+  const current = getStoredProducts();
+  return current.find((p) => p.id === id) || products.find((p) => p.id === id);
+};
+
+export const byCategory = (slug: string) => {
+  const current = getStoredProducts();
+  return current.filter((p) => p.category === slug);
+};
