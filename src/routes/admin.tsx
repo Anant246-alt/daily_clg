@@ -24,6 +24,8 @@ import {
   FiMail,
   FiPlus,
   FiTrash2,
+  FiUpload,
+  FiImage,
 } from "react-icons/fi";
 import { toast } from "sonner";
 import { PageTransition, FadeIn } from "@/components/PageTransition";
@@ -1039,27 +1041,85 @@ function AdminProductModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="font-bold text-foreground block mb-1">MRP Original Price (₹)</label>
-              <input
-                type="number"
-                value={formData.mrp}
-                onChange={(e) => handleChange("mrp", Number(e.target.value))}
-                placeholder="329"
-                className="w-full rounded-2xl border border-border bg-background p-3 font-semibold outline-none focus:border-primary"
-              />
-            </div>
+          <div>
+            <label className="font-bold text-foreground block mb-1">MRP Original Price (₹)</label>
+            <input
+              type="number"
+              value={formData.mrp}
+              onChange={(e) => handleChange("mrp", Number(e.target.value))}
+              placeholder="329"
+              className="w-full rounded-2xl border border-border bg-background p-3 font-semibold outline-none focus:border-primary"
+            />
+          </div>
 
-            <div>
-              <label className="font-bold text-foreground block mb-1">Image URL / Path</label>
-              <input
-                type="text"
-                value={formData.image}
-                onChange={(e) => handleChange("image", e.target.value)}
-                placeholder="/assets/salad.jpg"
-                className="w-full rounded-2xl border border-border bg-background p-3 font-medium outline-none focus:border-primary"
-              />
+          {/* Direct File Upload & Live Preview Section */}
+          <div>
+            <label className="font-bold text-foreground block mb-1.5">Item Image (Direct File Upload)</label>
+            <div className="flex flex-col sm:flex-row items-center gap-3 rounded-2xl border border-border bg-background p-3">
+              {/* Image Preview Thumbnail */}
+              <div className="relative size-20 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+                {formData.image ? (
+                  <img src={formData.image} alt="Preview" className="size-full object-cover" />
+                ) : (
+                  <div className="grid size-full place-items-center text-muted-foreground">
+                    <FiImage className="size-8" />
+                  </div>
+                )}
+              </div>
+
+              {/* Upload Controls & URL Input */}
+              <div className="w-full space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="flex items-center gap-1.5 rounded-xl bg-primary px-3.5 py-2 font-bold text-primary-foreground shadow-sm hover:opacity-90 transition cursor-pointer text-xs">
+                    <FiUpload className="size-3.5" /> Upload Image File
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            return toast.error("Image file size should be less than 5MB");
+                          }
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            const result = event.target?.result as string;
+                            if (result) {
+                              handleChange("image", result);
+                              handleChange("gallery", [result]);
+                              toast.success("Image uploaded successfully!");
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+
+                  {formData.image && (
+                    <button
+                      type="button"
+                      onClick={() => handleChange("image", "")}
+                      className="rounded-xl border border-border bg-card px-2.5 py-2 font-bold text-muted-foreground hover:text-destructive transition cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
+                {/* Direct Image URL input fallback */}
+                <input
+                  type="text"
+                  value={formData.image}
+                  onChange={(e) => {
+                    handleChange("image", e.target.value);
+                    if (e.target.value) handleChange("gallery", [e.target.value]);
+                  }}
+                  placeholder="Or paste image URL (https://... or /assets/...)"
+                  className="w-full rounded-xl border border-border bg-card p-2 text-[11px] font-mono outline-none focus:border-primary"
+                />
+              </div>
             </div>
           </div>
 
