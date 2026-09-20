@@ -13,7 +13,8 @@ export const sendOtp = async (email: string, mode?: "signup" | "login") => {
     }
     return res.data;
   } catch (error: any) {
-    const msg = error.response?.data?.message || error.response?.data?.error || error.message || "Failed to send OTP email.";
+    let msg = error.response?.data?.message || error.response?.data?.error || error.message || "Failed to send OTP email.";
+    if (msg.includes("timeout")) msg = "Network response timed out. Please try sending OTP again.";
     throw new Error(msg);
   }
 };
@@ -27,7 +28,8 @@ export const verifyOtp = async (email: string, otp: string, name?: string) => {
     }
     return res.data;
   } catch (error: any) {
-    const msg = error.response?.data?.message || error.message || "OTP verification failed. Please try again.";
+    let msg = error.response?.data?.message || error.message || "OTP verification failed. Please try again.";
+    if (msg.includes("timeout")) msg = "Verification response timed out. Please click verify again.";
     throw new Error(msg);
   }
 };

@@ -10,6 +10,8 @@ import { readCollection, insertDocument } from "../config/fileDb.js";
 
 const SECRET = process.env.JWT_SECRET || "daily_jwt_secret_key_2026_super_secure";
 
+const memoryOtps = new Map();
+
 const generateToken = (id, email) => {
   return jwt.sign({ id, email }, SECRET, { expiresIn: "30d" });
 };
@@ -35,11 +37,10 @@ export const sendOtp = async (req, res) => {
     // Check account existence based on mode
     let existingUser = null;
     try {
-      await connectDB();
       if (mongoose.connection.readyState >= 1) {
         existingUser = await User.findOne({
           email: new RegExp(`^${identifier.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
-        });
+        }).maxTimeMS(2000);
       }
     } catch (err) {
       console.warn("[sendOtp DB Lookup Notice]:", err?.message);
@@ -65,6 +66,13 @@ export const sendOtp = async (req, res) => {
       .update(`${identifier}:${otpCode}`)
       .digest("hex");
 
+    // Store in-memory for instant < 1ms verification
+    memoryOtps.set(identifier, {
+      otp: otpCode,
+      expiresAt: expiresAtMs,
+      hashToken: hmacSignature,
+    });
+
     // Store in File DB fallback
     try {
       const currentOtps = readCollection("otps.json", []);
@@ -75,11 +83,10 @@ export const sendOtp = async (req, res) => {
       /* ignore file db error */
     }
 
-    // Store in MongoDB Atlas
+    // Store in MongoDB Atlas asynchronously
     try {
-      await connectDB();
       if (mongoose.connection.readyState >= 1) {
-        await Otp.deleteMany({ email: identifier });
+        await Otp.deleteMany({ email: identifier }).maxTimeMS(2000);
         await Otp.create({ email: identifier, otp: otpCode, expiresAt });
         console.log(`[MongoDB Atlas OTP Created] Saved code ${otpCode} for recipient ${identifier}`);
       }
@@ -146,8 +153,20 @@ export const verifyOtp = async (req, res) => {
     let isValid = false;
     let otpExpired = false;
 
-    // 1. HMAC Verification check
-    if (hashToken) {
+    // 1. In-memory Verification check (Instant < 1ms)
+    const memRecord = memoryOtps.get(identifier);
+    if (memRecord) {
+      if (memRecord.expiresAt < Date.now()) {
+        otpExpired = true;
+        memoryOtps.delete(identifier);
+      } else if (String(memRecord.otp) === cleanOtp || (hashToken && memRecord.hashToken === hashToken)) {
+        isValid = true;
+        memoryOtps.delete(identifier);
+      }
+    }
+
+    // 2. HMAC Verification check
+    if (!isValid && !otpExpired && hashToken) {
       const expectedHmac = crypto
         .createHmac("sha256", SECRET)
         .update(`${identifier}:${cleanOtp}`)
@@ -155,26 +174,6 @@ export const verifyOtp = async (req, res) => {
       if (expectedHmac === hashToken) {
         isValid = true;
       }
-    }
-
-    // 2. MongoDB Atlas Verification check
-    let dbOtpRecord = null;
-    try {
-      await connectDB();
-      if (mongoose.connection.readyState >= 1) {
-        dbOtpRecord = await Otp.findOne({ email: identifier, otp: cleanOtp });
-        if (dbOtpRecord) {
-          if (dbOtpRecord.expiresAt && new Date(dbOtpRecord.expiresAt) < new Date()) {
-            otpExpired = true;
-            await Otp.deleteOne({ _id: dbOtpRecord._id });
-          } else {
-            isValid = true;
-            await Otp.deleteOne({ _id: dbOtpRecord._id });
-          }
-        }
-      }
-    } catch (dbErr) {
-      console.warn("[verifyOtp DB Notice]:", dbErr?.message);
     }
 
     // 3. File DB Verification check
@@ -194,6 +193,26 @@ export const verifyOtp = async (req, res) => {
         }
       } catch {
         /* ignore file db error */
+      }
+    }
+
+    // 4. MongoDB Atlas Verification check (Max 2s timeout)
+    if (!isValid && !otpExpired) {
+      try {
+        if (mongoose.connection.readyState >= 1) {
+          const dbOtpRecord = await Otp.findOne({ email: identifier, otp: cleanOtp }).maxTimeMS(2000);
+          if (dbOtpRecord) {
+            if (dbOtpRecord.expiresAt && new Date(dbOtpRecord.expiresAt) < new Date()) {
+              otpExpired = true;
+              await Otp.deleteOne({ _id: dbOtpRecord._id });
+            } else {
+              isValid = true;
+              await Otp.deleteOne({ _id: dbOtpRecord._id });
+            }
+          }
+        }
+      } catch (dbErr) {
+        console.warn("[verifyOtp DB Notice]:", dbErr?.message);
       }
     }
 

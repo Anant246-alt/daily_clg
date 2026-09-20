@@ -5,7 +5,7 @@ import axios from "axios";
 export const api = axios.create({
   baseURL: "/api",
   headers: { "Content-Type": "application/json" },
-  timeout: 15000,
+  timeout: 45000,
 });
 
 api.interceptors.request.use((config) => {
