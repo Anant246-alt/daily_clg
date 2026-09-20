@@ -203,10 +203,14 @@ function CheckoutPage() {
     const targetAddress = addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows, Koramangala";
     const res = await placeOrder({
       items: cart.items,
+      paymentMethod: "Cash on Delivery",
       method: "Cash on Delivery",
       instructions,
       total: cart.total,
       address: targetAddress,
+      userName: user?.name || "Customer",
+      userEmail: user?.email || "dailyclgproject@gmail.com",
+      userPhone: phone || user?.phone || "",
     });
 
     const now = new Date();

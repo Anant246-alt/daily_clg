@@ -8,7 +8,7 @@ import { sendEmail } from "../utils/sendEmail.js";
 import { sendSmsOtp } from "../utils/sendSms.js";
 import { getOrderConfirmationTemplate } from "../utils/emailTemplates.js";
 import { readCollection, insertDocument } from "../config/fileDb.js";
-import mongoose from "mongoose";
+import { connectDB } from "../config/db.js";
 
 /**
  * 1. POST /api/payment/create-order
@@ -16,6 +16,7 @@ import mongoose from "mongoose";
  */
 export const createRazorpayOrder = async (req, res, next) => {
   try {
+    await connectDB();
     const targetEmail = (req.body?.email || req.body?.userEmail || req.user?.email || "dailyclgproject@gmail.com").trim().toLowerCase();
     const dynamicOtp = Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -78,7 +79,9 @@ export const createRazorpayOrder = async (req, res, next) => {
  */
 export const verifyRazorpayPayment = async (req, res, next) => {
   try {
+    await connectDB();
     const userId = req.user ? (req.user._id || req.user.id || "u1") : "u1";
+    const userName = req.user?.name || req.body?.userName || "Customer";
     const userEmail = req.user?.email || req.body?.userEmail || "dailyclgproject@gmail.com";
     const {
       razorpay_order_id,
@@ -154,8 +157,18 @@ export const verifyRazorpayPayment = async (req, res, next) => {
     const dateStr = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
     const nowTimeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 
+    const initialAudit = {
+      previousStatus: "",
+      newStatus: "Preparing",
+      timestamp: now,
+      formattedTime: dateStr,
+      actor: "customer",
+      notes: "Order placed & online payment verified",
+    };
+
     const newOrderData = {
       user: userId,
+      userName,
       userEmail: userEmail || req.user?.email || "dailyclgproject@gmail.com",
       userPhone: phone || req.user?.phone || "",
       id: orderId,
@@ -174,6 +187,7 @@ export const verifyRazorpayPayment = async (req, res, next) => {
         { label: "Out for delivery", time: "—", done: false },
         { label: "Delivered", time: "—", done: false },
       ],
+      statusHistory: [initialAudit],
       razorpayOrderId: rzpOrderId,
       razorpayPaymentId: rzpPaymentId,
       razorpaySignature: rzpSignature,

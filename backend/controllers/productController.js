@@ -93,9 +93,11 @@ const fallbackProducts = [
 ];
 
 import { readCollection, insertDocument } from "../config/fileDb.js";
+import { connectDB } from "../config/db.js";
 
 export const getProducts = async (req, res, next) => {
   try {
+    await connectDB();
     let products = [];
     try {
       products = await Product.find().select("-__v").lean();
@@ -123,9 +125,17 @@ export const getProducts = async (req, res, next) => {
 
 export const updateProductsList = async (req, res) => {
   try {
+    await connectDB();
     const body = req.body || {};
     const updatedList = Array.isArray(body) ? body : body.products;
     if (Array.isArray(updatedList) && updatedList.length > 0) {
+      try {
+        await Product.deleteMany({});
+        await Product.insertMany(updatedList);
+        console.log(`[MongoDB Atlas] Saved ${updatedList.length} products to cloud database`);
+      } catch (dbErr) {
+        console.warn("[Products MongoDB Atlas Notice]:", dbErr?.message);
+      }
       try {
         insertDocument("products.json", updatedList, true);
       } catch {
