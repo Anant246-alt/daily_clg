@@ -119,11 +119,15 @@ function CheckoutPage() {
               userEmail: user?.email || "dailyclgproject@gmail.com",
             });
 
+            if (!verifyRes?.order && !verifyRes?.orderId) {
+              throw new Error(verifyRes?.message || "Payment verified but the order was not saved");
+            }
+
             const now = new Date();
             const nowFormatted = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
             const newOrderObj = verifyRes.order || {
-              id: verifyRes.orderId || `o_${Date.now()}`,
-              number: verifyRes.orderNumber || `#DLY-${Math.floor(1002 + Math.random() * 9000)}`,
+              id: verifyRes.orderId,
+              number: verifyRes.orderNumber,
               date: nowFormatted,
               status: "Preparing",
               paymentStatus: "Paid",
@@ -201,39 +205,48 @@ function CheckoutPage() {
     // Direct checkout ONLY for Cash on Delivery (COD)
     setLoading(true);
     const targetAddress = addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows, Koramangala";
-    const res = await placeOrder({
-      items: cart.items,
-      paymentMethod: "Cash on Delivery",
-      method: "Cash on Delivery",
-      instructions,
-      total: cart.total,
-      address: targetAddress,
-      userName: user?.name || "Customer",
-      userEmail: user?.email || "dailyclgproject@gmail.com",
-      userPhone: phone || user?.phone || "",
-    });
+    try {
+      const res = await placeOrder({
+        items: cart.items,
+        paymentMethod: "Cash on Delivery",
+        method: "Cash on Delivery",
+        instructions,
+        total: cart.total,
+        address: targetAddress,
+        userName: user?.name || "Customer",
+        userEmail: user?.email || "dailyclgproject@gmail.com",
+        userPhone: phone || user?.phone || "",
+      });
 
-    const now = new Date();
-    const nowFormatted = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
-    const newOrderObj = res.order || {
-      id: res.orderId || `o_${Date.now()}`,
-      number: res.orderNumber || `#DLY-${Math.floor(1002 + Math.random() * 9000)}`,
-      date: nowFormatted,
-      status: "Preparing",
-      paymentStatus: "Pending",
-      total: cart.total,
-      paymentMethod: "Cash on Delivery",
-      address: targetAddress,
-      items: [...cart.items],
-      timeline: [],
-    };
-    createOrder(newOrderObj);
+      if (!res?.order && !res?.orderId) {
+        throw new Error(res?.message || "Order was not saved. Please try again.");
+      }
 
-    setLastOrder({ id: newOrderObj.id, number: res.orderNumber || newOrderObj.number || "#DLY-1002", eta: "25 – 35 min" });
-    cart.clearCart();
-    setLoading(false);
-    toast.success("Order placed successfully via Cash on Delivery");
-    void navigate({ to: "/order-success" });
+      const now = new Date();
+      const nowFormatted = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+      const newOrderObj = res.order || {
+        id: res.orderId,
+        number: res.orderNumber,
+        date: nowFormatted,
+        status: "Preparing",
+        paymentStatus: "Pending",
+        total: cart.total,
+        paymentMethod: "Cash on Delivery",
+        address: targetAddress,
+        items: [...cart.items],
+        timeline: [],
+      };
+      createOrder(newOrderObj);
+
+      setLastOrder({ id: newOrderObj.id, number: res.orderNumber || newOrderObj.number || "#DLY-1002", eta: "25 – 35 min" });
+      cart.clearCart();
+      toast.success("Order placed successfully via Cash on Delivery");
+      void navigate({ to: "/order-success" });
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || err.message || "Could not place order. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   /** Step 2: Resend 6-Digit Payment OTP Code to Email Address */
@@ -282,11 +295,15 @@ function CheckoutPage() {
         otp: paymentOtp,
       });
 
+      if (!verifyRes?.order && !verifyRes?.orderId) {
+        throw new Error(verifyRes?.message || "Payment verified but the order was not saved");
+      }
+
       const now = new Date();
       const nowFormatted = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
       const newOrderObj = verifyRes.order || {
-        id: verifyRes.orderId || `o_${Date.now()}`,
-        number: verifyRes.orderNumber || `#DLY-${Math.floor(1002 + Math.random() * 9000)}`,
+        id: verifyRes.orderId,
+        number: verifyRes.orderNumber,
         date: nowFormatted,
         status: "Preparing",
         paymentStatus: "Paid",

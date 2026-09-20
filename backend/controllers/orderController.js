@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Order } from "../models/Order.js";
 import { Cart } from "../models/Cart.js";
 import { Notification } from "../models/Notification.js";
@@ -8,6 +9,27 @@ import { connectDB } from "../config/db.js";
 
 const fallbackOrders = [];
 
+const toUserRef = (userId) => {
+  if (!userId) return undefined;
+  const id = String(userId._id || userId);
+  if (mongoose.Types.ObjectId.isValid(id) && String(id).length === 24) {
+    return id;
+  }
+  return undefined;
+};
+
+const sanitizeItems = (items) => {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  return items.map((item) => ({
+    id: String(item.id || item._id || "item"),
+    name: String(item.name || "Item"),
+    qty: Number(item.qty) || 1,
+    price: Number(item.price) || 0,
+  }));
+};
+
+const serializeOrder = (order) => (order?.toObject ? order.toObject() : order);
+
 export const getOrders = async (req, res, next) => {
   try {
     await connectDB();
@@ -17,18 +39,17 @@ export const getOrders = async (req, res, next) => {
 
     let dbOrders = [];
     try {
-      dbOrders = await Order.find({
-        $or: [
-          { user: userId },
-          { userEmail: userEmail },
-          { user: userEmail },
-          { userPhone: userPhone },
-        ],
-      })
-        .sort({ createdAt: -1 })
-        .select("-__v");
+      if (mongoose.connection.readyState === 1) {
+        const queryOr = [];
+        if (toUserRef(userId)) queryOr.push({ user: userId });
+        if (userEmail) queryOr.push({ userEmail });
+        if (userPhone) queryOr.push({ userPhone });
+        dbOrders = queryOr.length
+          ? await Order.find({ $or: queryOr }).sort({ createdAt: -1 }).select("-__v")
+          : [];
+      }
     } catch (err) {
-      console.warn("[Orders] DB fetch failed");
+      console.warn("[Orders] DB fetch failed:", err.message);
     }
 
     const diskOrders = readCollection("orders", fallbackOrders);
@@ -75,7 +96,9 @@ export const getOrderById = async (req, res, next) => {
       ];
       if (isObjectId) queryConditions.push({ _id: id });
 
-      order = await Order.findOne({ $or: queryConditions }).select("-__v");
+      if (mongoose.connection.readyState === 1) {
+        order = await Order.findOne({ $or: queryConditions }).select("-__v");
+      }
     } catch (err) {
       console.warn(`[Order] DB fetch for ${id} failed:`, err.message);
     }
@@ -108,10 +131,12 @@ export const getAllAdminOrders = async (req, res, next) => {
     await connectDB();
     let dbOrders = [];
     try {
-      dbOrders = await Order.find({})
-        .populate("user", "name email phone")
-        .sort({ createdAt: -1 })
-        .select("-__v");
+      if (mongoose.connection.readyState === 1) {
+        dbOrders = await Order.find({})
+          .populate("user", "name email phone")
+          .sort({ createdAt: -1 })
+          .select("-__v");
+      }
     } catch (err) {
       console.warn("[Admin Orders] DB fetch failed:", err.message);
     }
@@ -277,9 +302,10 @@ export const createOrder = async (req, res, next) => {
   try {
     await connectDB();
     const userId = req.user._id || req.user.id;
+    const userRef = toUserRef(userId);
     const userName = req.user.name || req.body.userName || "Customer";
-    const userEmail = req.user.email || "dailyclgproject@gmail.com";
-    const userPhone = req.user.phone || "";
+    const userEmail = req.user.email || req.body.userEmail || "dailyclgproject@gmail.com";
+    const userPhone = req.user.phone || req.body.userPhone || "";
     const {
       total,
       paymentMethod,
@@ -308,8 +334,16 @@ export const createOrder = async (req, res, next) => {
       notes: "Order placed successfully by customer",
     };
 
+    const mappedItems = sanitizeItems(items);
+    const sanitizedItems = mappedItems.length
+      ? mappedItems
+      : [
+          { id: "p4", name: "Paneer Tikka Footlong", qty: 1, price: 349 },
+          { id: "p3", name: "Peach Mint Iced Tea", qty: 1, price: 129 },
+        ];
+
     const newOrderData = {
-      user: userId,
+      ...(userRef ? { user: userRef } : {}),
       userName,
       userEmail,
       userPhone,
@@ -322,10 +356,7 @@ export const createOrder = async (req, res, next) => {
       total: total || 500,
       paymentMethod: paymentMethod || "Razorpay Online",
       address: address || "Flat 402, Green Meadows, Koramangala, Bengaluru 560034",
-      items: items || [
-        { id: "p4", name: "Paneer Tikka Footlong", qty: 1, price: 349 },
-        { id: "p3", name: "Peach Mint Iced Tea", qty: 1, price: 129 },
-      ],
+      items: sanitizedItems,
       timeline: [
         { label: "Order placed", time: nowTimeStr, done: true },
         { label: "Restaurant confirmed", time: nowTimeStr, done: true },
@@ -337,27 +368,41 @@ export const createOrder = async (req, res, next) => {
       razorpayOrderId: razorpayOrderId || "",
       razorpayPaymentId: razorpayPaymentId || "",
       razorpaySignature: razorpaySignature || "",
+      createdAt: now,
     };
 
-
-    let createdOrder = newOrderData;
+    let createdOrder = null;
     try {
-      createdOrder = await Order.create(newOrderData);
+      if (mongoose.connection.readyState === 1) {
+        createdOrder = await Order.create(newOrderData);
+      } else {
+        console.warn("[Order Warning] MongoDB not connected, using disk fallback");
+      }
     } catch (dbErr) {
       console.warn(`[Order Warning] DB write failed: ${dbErr.message}`);
     }
 
-    insertDocument("orders", newOrderData);
+    try {
+      insertDocument("orders", serializeOrder(createdOrder) || newOrderData);
+    } catch (diskErr) {
+      console.warn("[Order] Disk fallback skipped:", diskErr.message);
+    }
+
+    if (!createdOrder) {
+      createdOrder = newOrderData;
+    }
 
     try {
-      await Cart.findOneAndUpdate({ user: userId }, { items: [], promo: null });
+      if (userRef) {
+        await Cart.findOneAndUpdate({ user: userRef }, { items: [], promo: null });
+      }
     } catch (cartErr) {
       console.warn("[Cart] Clear on order placement skipped");
     }
 
     const notif = {
       id: `n_${Date.now()}`,
-      user: userId,
+      ...(userRef ? { user: userRef } : {}),
       type: "Order Updates",
       title: `Your order ${orderNum} is being prepared`,
       body: "The kitchen has started preparing your order.",
@@ -369,22 +414,30 @@ export const createOrder = async (req, res, next) => {
     } catch (notifErr) {
       console.warn("[Notification] Creation on order placement skipped");
     }
-    insertDocument("notifications", notif);
+    try {
+      insertDocument("notifications", notif);
+    } catch {
+      /* ignore */
+    }
 
     if (req.user && req.user.email) {
-      const emailHtml = getOrderConfirmationTemplate(newOrderData);
-      await sendEmail({
-        to: req.user.email,
-        subject: `Order Confirmation - ${orderNum} (Daily)`,
-        html: emailHtml,
-      });
+      try {
+        const emailHtml = getOrderConfirmationTemplate(newOrderData);
+        await sendEmail({
+          to: req.user.email,
+          subject: `Order Confirmation - ${orderNum} (Daily)`,
+          html: emailHtml,
+        });
+      } catch (emailErr) {
+        console.warn("[Order Email] Confirmation send skipped:", emailErr.message);
+      }
     }
 
     return res.status(201).json({
       success: true,
       orderNumber: orderNum,
       orderId,
-      order: createdOrder,
+      order: serializeOrder(createdOrder),
     });
   } catch (error) {
     next(error);
