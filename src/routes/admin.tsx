@@ -97,8 +97,10 @@ function AdminPage() {
     saveStoredProducts(nextList);
     try {
       await api.post("/products", { products: nextList });
-    } catch {
-      /* local storage fallback */
+    } catch (err: any) {
+      if (err?.response?.status === 413) {
+        console.warn("[saveProductsState Warning] Payload size exceeded server limit, saved locally in browser.");
+      }
     }
   };
 
@@ -1313,6 +1315,31 @@ function OrderDetailsModal({
     </div>
   );
 }
+const compressImage = (file: File, maxWidth = 600, quality = 0.75): Promise<string> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => resolve(event.target?.result as string);
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+};
 
 function AdminProductModal({
   product,
@@ -1442,23 +1469,17 @@ function AdminProductModal({
                       type="file"
                       accept="image/*"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          if (file.size > 5 * 1024 * 1024) {
-                            toast.error("Image file size should be less than 5MB");
-                            return;
+                          try {
+                            const compressed = await compressImage(file);
+                            handleChange("image", compressed);
+                            handleChange("gallery", [compressed]);
+                            toast.success("Image uploaded & optimized successfully!");
+                          } catch {
+                            toast.error("Failed to process image file");
                           }
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            const result = event.target?.result as string;
-                            if (result) {
-                              handleChange("image", result);
-                              handleChange("gallery", [result]);
-                              toast.success("Image uploaded successfully!");
-                            }
-                          };
-                          reader.readAsDataURL(file);
                         }
                       }}
                     />
