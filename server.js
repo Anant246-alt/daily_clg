@@ -25,6 +25,7 @@ import notificationRoutes from "./backend/routes/notificationRoutes.js";
 import reviewRoutes from "./backend/routes/reviewRoutes.js";
 import profileRoutes from "./backend/routes/profileRoutes.js";
 import supportRoutes from "./backend/routes/supportRoutes.js";
+import adminV1Routes from "./backend/modules/admin/routes/adminRoutes.js";
 
 dotenv.config();
 
@@ -126,6 +127,8 @@ app.use("/profile", profileRoutes);
 
 app.use("/api/support", supportRoutes);
 app.use("/support", supportRoutes);
+
+app.use("/api/admin/v1", adminV1Routes);
 
 // Error Handling Middlewares
 app.use(notFound);
