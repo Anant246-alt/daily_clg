@@ -133,61 +133,46 @@ function AdminPage() {
     toast.success("Reset menu catalogue to default items!");
   };
 
-  // Fetch real customer orders from MongoDB Atlas, OrderContext, and localStorage
+  // Fetch real customer orders directly from single unified Express backend & MongoDB Atlas
   const loadAdminOrders = async () => {
     setIsLoadingOrders(true);
     try {
       const data = await fetchAdminOrders();
-      let localOrders: any[] = [];
-      try {
-        localOrders = JSON.parse(localStorage.getItem("daily.orders") || "[]");
-      } catch {
-        /* empty */
-      }
+      if (Array.isArray(data) && data.length > 0) {
+        const filtered = data.filter(
+          (o: any) =>
+            !["o1001", "o1000", "o999", "#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.id) &&
+            !["#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.number)
+        );
 
-      const combinedMap = new Map();
-      if (Array.isArray(data)) {
-        data.forEach((o) => {
-          const key = o.id || o.number;
-          if (key) combinedMap.set(key, o);
+        filtered.sort((a: any, b: any) => {
+          const getTs = (item: any) => {
+            if (item.createdAt) return new Date(item.createdAt).getTime();
+            if (typeof item.id === "string" && item.id.startsWith("o_")) {
+              const num = Number(item.id.replace("o_", ""));
+              if (!isNaN(num)) return num;
+            }
+            if (item.date) {
+              const parsed = new Date(item.date).getTime();
+              if (!isNaN(parsed)) return parsed;
+            }
+            return 0;
+          };
+          return getTs(b) - getTs(a);
         });
-      }
-      if (Array.isArray(orders)) {
-        orders.forEach((o: any) => {
-          const key = o.id || o.number;
-          if (key && !combinedMap.has(key)) combinedMap.set(key, o);
-        });
-      }
-      if (Array.isArray(localOrders)) {
-        localOrders.forEach((o: any) => {
-          const key = o.id || o.number;
-          if (key && !combinedMap.has(key)) combinedMap.set(key, o);
-        });
-      }
 
-      const allMerged = Array.from(combinedMap.values()).filter(
-        (o: any) =>
-          !["o1001", "o1000", "o999", "#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.id) &&
-          !["#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.number)
-      );
-
-      allMerged.sort((a: any, b: any) => {
-        const getTs = (item: any) => {
-          if (item.createdAt) return new Date(item.createdAt).getTime();
-          if (typeof item.id === "string" && item.id.startsWith("o_")) {
-            const num = Number(item.id.replace("o_", ""));
-            if (!isNaN(num)) return num;
-          }
-          if (item.date) {
-            const parsed = new Date(item.date).getTime();
-            if (!isNaN(parsed)) return parsed;
-          }
-          return 0;
-        };
-        return getTs(b) - getTs(a);
-      });
-
-      setAdminOrders(allMerged);
+        setAdminOrders(filtered);
+      } else {
+        // If API returns empty or falls back, use context orders filtered for mock data
+        const fallback = Array.isArray(orders)
+          ? orders.filter(
+              (o: any) =>
+                !["o1001", "o1000", "o999", "#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.id) &&
+                !["#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.number)
+            )
+          : [];
+        setAdminOrders(fallback as any);
+      }
     } catch {
       setAdminOrders(orders as any);
     } finally {
