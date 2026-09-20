@@ -131,7 +131,28 @@ export const getAllAdminOrders = async (req, res, next) => {
       }
     });
 
-    const finalOrders = Array.from(combinedMap.values());
+    const finalOrders = Array.from(combinedMap.values()).filter(
+      (o) =>
+        !["#DLY-1001", "#DLY-1000", "#DLY-0999", "o1001", "o1000", "o999"].includes(o.number) &&
+        !["#DLY-1001", "#DLY-1000", "#DLY-0999", "o1001", "o1000", "o999"].includes(o.id)
+    );
+
+    finalOrders.sort((a, b) => {
+      const getTs = (item) => {
+        if (item.createdAt) return new Date(item.createdAt).getTime();
+        if (typeof item.id === "string" && item.id.startsWith("o_")) {
+          const num = Number(item.id.replace("o_", ""));
+          if (!isNaN(num)) return num;
+        }
+        if (item.date) {
+          const parsed = new Date(item.date).getTime();
+          if (!isNaN(parsed)) return parsed;
+        }
+        return 0;
+      };
+      return getTs(b) - getTs(a);
+    });
+
     return res.status(200).json(finalOrders);
   } catch (error) {
     next(error);
@@ -237,18 +258,9 @@ export const createOrder = async (req, res, next) => {
 
     const orderNum = `#DLY-${Math.floor(1002 + Math.random() * 9000)}`;
     const orderId = `o_${Date.now()}`;
-    const dateStr = new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    const nowTimeStr = new Date().toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const now = new Date();
+    const dateStr = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    const nowTimeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 
     const isCod = (paymentMethod || "").toLowerCase().includes("cod") || (paymentMethod || "").toLowerCase().includes("cash");
     const pStatus = isCod ? "Pending" : "Paid";

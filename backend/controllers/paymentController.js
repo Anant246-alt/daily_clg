@@ -150,17 +150,9 @@ export const verifyRazorpayPayment = async (req, res, next) => {
     // Payment Verified Successfully — Save Order
     const orderNum = `#DLY-${Math.floor(1002 + Math.random() * 9000)}`;
     const orderId = rzpOrderId || `o_${Date.now()}`;
-    const dateStr = new Date().toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    const nowTimeStr = new Date().toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    const now = new Date();
+    const dateStr = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+    const nowTimeStr = now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 
     const newOrderData = {
       user: userId,

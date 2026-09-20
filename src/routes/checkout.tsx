@@ -119,10 +119,12 @@ function CheckoutPage() {
               userEmail: user?.email || "dailyclgproject@gmail.com",
             });
 
+            const now = new Date();
+            const nowFormatted = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
             const newOrderObj = verifyRes.order || {
               id: verifyRes.orderId || `o_${Date.now()}`,
-              number: verifyRes.orderNumber || "#DLY-1002",
-              date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+              number: verifyRes.orderNumber || `#DLY-${Math.floor(1002 + Math.random() * 9000)}`,
+              date: nowFormatted,
               status: "Preparing",
               paymentStatus: "Paid",
               total: cart.total,
@@ -207,10 +209,12 @@ function CheckoutPage() {
       address: targetAddress,
     });
 
+    const now = new Date();
+    const nowFormatted = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
     const newOrderObj = res.order || {
       id: res.orderId || `o_${Date.now()}`,
-      number: res.orderNumber || "#DLY-1002",
-      date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+      number: res.orderNumber || `#DLY-${Math.floor(1002 + Math.random() * 9000)}`,
+      date: nowFormatted,
       status: "Preparing",
       paymentStatus: "Pending",
       total: cart.total,
@@ -274,10 +278,12 @@ function CheckoutPage() {
         otp: paymentOtp,
       });
 
+      const now = new Date();
+      const nowFormatted = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
       const newOrderObj = verifyRes.order || {
         id: verifyRes.orderId || `o_${Date.now()}`,
-        number: verifyRes.orderNumber || "#DLY-1002",
-        date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+        number: verifyRes.orderNumber || `#DLY-${Math.floor(1002 + Math.random() * 9000)}`,
+        date: nowFormatted,
         status: "Preparing",
         paymentStatus: "Paid",
         total: cart.total,

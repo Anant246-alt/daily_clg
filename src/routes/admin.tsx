@@ -162,7 +162,29 @@ function AdminPage() {
         });
       }
 
-      setAdminOrders(Array.from(combinedMap.values()));
+      const allMerged = Array.from(combinedMap.values()).filter(
+        (o: any) =>
+          !["o1001", "o1000", "o999", "#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.id) &&
+          !["#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.number)
+      );
+
+      allMerged.sort((a: any, b: any) => {
+        const getTs = (item: any) => {
+          if (item.createdAt) return new Date(item.createdAt).getTime();
+          if (typeof item.id === "string" && item.id.startsWith("o_")) {
+            const num = Number(item.id.replace("o_", ""));
+            if (!isNaN(num)) return num;
+          }
+          if (item.date) {
+            const parsed = new Date(item.date).getTime();
+            if (!isNaN(parsed)) return parsed;
+          }
+          return 0;
+        };
+        return getTs(b) - getTs(a);
+      });
+
+      setAdminOrders(allMerged);
     } catch {
       setAdminOrders(orders as any);
     } finally {
