@@ -108,6 +108,7 @@ export const sendOtp = async (req, res) => {
       return res.status(200).json({
         success: true,
         emailSent: true,
+        otpCode: otpCode,
         email: identifier,
         hashToken: hmacSignature,
         message: `OTP sent successfully to ${identifier}`,

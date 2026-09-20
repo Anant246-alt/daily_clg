@@ -7,11 +7,8 @@ import { api } from "./client";
  *   GET  /api/payment/status/:id    -> { success, paymentStatus, order }
  */
 export const createPaymentOrder = async (amount: number, phone?: string) => {
-  try {
-    return (await api.post("/payment/create-order", { amount, phone })).data;
-  } catch {
-    return { orderId: `rzp_${Date.now()}`, amount: amount * 100, currency: "INR", keyId: "rzp_test_TLXgSkf5lA607j" };
-  }
+  const res = await api.post("/payment/create-order", { amount, phone });
+  return res.data;
 };
 
 export const verifyPayment = async (payload: {
@@ -26,6 +23,9 @@ export const verifyPayment = async (payload: {
   address?: string;
   instructions?: string;
   paymentMethod?: string;
+  userEmail?: string;
+  otp?: string;
+  phone?: string;
 }) => {
   try {
     return (await api.post("/payment/verify", payload)).data;

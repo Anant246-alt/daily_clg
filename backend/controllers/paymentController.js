@@ -1,14 +1,35 @@
 import crypto from "crypto";
-import { getRazorpayInstance } from "../utils/razorpay.js";
+import mongoose from "mongoose";
+import { getRazorpayInstance, getRazorpayKeyId, getRazorpayKeySecret } from "../utils/razorpay.js";
 import { Order } from "../models/Order.js";
 import { Cart } from "../models/Cart.js";
 import { Notification } from "../models/Notification.js";
 import { Otp } from "../models/Otp.js";
 import { sendEmail } from "../utils/sendEmail.js";
-import { sendSmsOtp } from "../utils/sendSms.js";
-import { getOrderConfirmationTemplate } from "../utils/emailTemplates.js";
+import { getOtpEmailTemplate, getOrderConfirmationTemplate } from "../utils/emailTemplates.js";
 import { readCollection, insertDocument } from "../config/fileDb.js";
 import { connectDB } from "../config/db.js";
+
+const toUserRef = (userId) => {
+  if (!userId) return undefined;
+  const id = String(userId._id || userId);
+  if (mongoose.Types.ObjectId.isValid(id) && String(id).length === 24) {
+    return id;
+  }
+  return undefined;
+};
+
+const sanitizeItems = (items) => {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  return items.map((item) => ({
+    id: String(item.id || item._id || "item"),
+    name: String(item.name || "Item"),
+    qty: Number(item.qty) || 1,
+    price: Number(item.price) || 0,
+  }));
+};
+
+const serializeOrder = (order) => (order?.toObject ? order.toObject() : order);
 
 /**
  * 1. POST /api/payment/create-order
@@ -19,6 +40,9 @@ export const createRazorpayOrder = async (req, res, next) => {
     await connectDB();
     const targetEmail = (req.body?.email || req.body?.userEmail || req.user?.email || "dailyclgproject@gmail.com").trim().toLowerCase();
     const dynamicOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const finalAmount = Number(req.body?.amount) || 0;
+    const currency = req.body?.currency || "INR";
+    const keyId = getRazorpayKeyId();
 
     try {
       await Otp.deleteMany({ email: targetEmail });
@@ -41,8 +65,8 @@ export const createRazorpayOrder = async (req, res, next) => {
 
     const razorpay = getRazorpayInstance();
     const options = {
-      amount: Math.round(finalAmount * 100), // amount in paise
-      currency: currency || "INR",
+      amount: Math.round(finalAmount * 100),
+      currency,
       receipt: `receipt_${Date.now()}`,
       payment_capture: 1,
     };
@@ -63,7 +87,7 @@ export const createRazorpayOrder = async (req, res, next) => {
         success: true,
         orderId: `order_test_${Date.now()}`,
         amount: options.amount,
-        currency: "INR",
+        currency,
         keyId,
         otpCode: dynamicOtp || undefined,
       });
@@ -80,7 +104,8 @@ export const createRazorpayOrder = async (req, res, next) => {
 export const verifyRazorpayPayment = async (req, res, next) => {
   try {
     await connectDB();
-    const userId = req.user ? (req.user._id || req.user.id || "u1") : "u1";
+    const userId = req.user ? (req.user._id || req.user.id) : undefined;
+    const userRef = toUserRef(userId);
     const userName = req.user?.name || req.body?.userName || "Customer";
     const userEmail = req.user?.email || req.body?.userEmail || "dailyclgproject@gmail.com";
     const {
@@ -103,7 +128,7 @@ export const verifyRazorpayPayment = async (req, res, next) => {
     const rzpPaymentId = razorpay_payment_id || razorpayPaymentId || `pay_${Date.now()}`;
     const rzpSignature = razorpay_signature || razorpaySignature || "";
 
-    const secret = (process.env.RAZORPAY_KEY_SECRET || "Nv4EtrRQfJt5nLARCRMDmFog").replace(/[<>]/g, "").trim();
+    const secret = getRazorpayKeySecret();
 
     let isValid = false;
 
@@ -124,13 +149,23 @@ export const verifyRazorpayPayment = async (req, res, next) => {
     }
 
     // 2. Check Database OTP Match if OTP parameter was passed
-    if (!isValid && otp && phone && mongoose.connection.readyState === 1) {
-      const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+    if (!isValid && otp && mongoose.connection.readyState === 1) {
       try {
-        const record = await Otp.findOne({ email: cleanPhone, otp });
-        if (record) {
-          isValid = true;
-          await Otp.deleteOne({ _id: record._id });
+        const cleanPhone = phone ? String(phone).replace(/\D/g, "").slice(-10) : "";
+        const email = String(userEmail || "").trim().toLowerCase();
+        const otpQuery = {
+          otp,
+          $or: [
+            ...(cleanPhone ? [{ email: cleanPhone }] : []),
+            ...(email ? [{ email }] : []),
+          ],
+        };
+        if (otpQuery.$or.length > 0) {
+          const record = await Otp.findOne(otpQuery);
+          if (record) {
+            isValid = true;
+            await Otp.deleteOne({ _id: record._id });
+          }
         }
       } catch (otpErr) {
         console.warn("[DB OTP Check Notice]:", otpErr.message);
@@ -167,7 +202,7 @@ export const verifyRazorpayPayment = async (req, res, next) => {
     };
 
     const newOrderData = {
-      user: userId,
+      ...(userRef ? { user: userRef } : {}),
       userName,
       userEmail: userEmail || req.user?.email || "dailyclgproject@gmail.com",
       userPhone: phone || req.user?.phone || "",
@@ -176,10 +211,11 @@ export const verifyRazorpayPayment = async (req, res, next) => {
       date: dateStr,
       status: "Preparing",
       paymentStatus: "Paid",
+      isConfirmed: true,
       total: total || 500,
       paymentMethod: paymentMethod || "Razorpay Payment",
       address: address || "Flat 402, Green Meadows, Koramangala",
-      items: items || [],
+      items: sanitizeItems(items),
       timeline: [
         { label: "Order placed", time: nowTimeStr, done: true },
         { label: "Payment received", time: nowTimeStr, done: true },
@@ -191,29 +227,41 @@ export const verifyRazorpayPayment = async (req, res, next) => {
       razorpayOrderId: rzpOrderId,
       razorpayPaymentId: rzpPaymentId,
       razorpaySignature: rzpSignature,
+      createdAt: now,
     };
 
-    let createdOrder = newOrderData;
+    let createdOrder = null;
     try {
-      createdOrder = await Order.create(newOrderData);
+      if (mongoose.connection.readyState === 1) {
+        createdOrder = await Order.create(newOrderData);
+      } else {
+        console.warn("[Order Warning] MongoDB not connected, using disk fallback");
+      }
     } catch (dbErr) {
-      console.warn(`[Order Warning] MongoDB write skipped: ${dbErr.message}`);
+      console.warn(`[Order Warning] DB write failed: ${dbErr.message}`);
     }
 
-    // Save to disk persistent storage
-    insertDocument("orders", newOrderData);
-
-    // 1. Clear Cart
     try {
-      await Cart.findOneAndUpdate({ user: userId }, { items: [], promo: null });
+      insertDocument("orders", serializeOrder(createdOrder) || newOrderData);
+    } catch (diskErr) {
+      console.warn("[Order] Disk fallback skipped:", diskErr.message);
+    }
+
+    if (!createdOrder) {
+      createdOrder = newOrderData;
+    }
+
+    try {
+      if (userRef) {
+        await Cart.findOneAndUpdate({ user: userRef }, { items: [], promo: null });
+      }
     } catch (cartErr) {
       console.warn("[Cart] Clear on payment verification skipped");
     }
 
-    // 2. Create Notification
     const notif = {
       id: `n_${Date.now()}`,
-      user: userId,
+      ...(userRef ? { user: userRef } : {}),
       type: "Order Updates",
       title: `Payment Received! Order ${orderNum} confirmed`,
       body: "Your payment was verified successfully.",
@@ -225,7 +273,11 @@ export const verifyRazorpayPayment = async (req, res, next) => {
     } catch (notifErr) {
       console.warn("[Notification] Creation skipped");
     }
-    insertDocument("notifications", notif);
+    try {
+      insertDocument("notifications", notif);
+    } catch {
+      /* ignore */
+    }
 
     // 3. Send Order Confirmation Email via Nodemailer
     if (userEmail) {
@@ -244,13 +296,13 @@ export const verifyRazorpayPayment = async (req, res, next) => {
       orderNumber: orderNum,
       orderId,
       paymentId: rzpPaymentId,
-      order: createdOrder,
+      order: serializeOrder(createdOrder),
     });
   } catch (error) {
     console.error("[verifyRazorpayPayment Error]:", error);
-    return res.status(400).json({
+    return res.status(500).json({
       success: false,
-      message: "Payment verification failed",
+      message: error.message || "Payment verification failed",
     });
   }
 };

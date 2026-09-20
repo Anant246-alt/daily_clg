@@ -10,6 +10,12 @@ export default defineConfig({
       "@": path.resolve(process.cwd(), "./src"),
     },
   },
+  server: {
+    port: 5173,
+    proxy: {
+      "/api": { target: "http://localhost:5000", changeOrigin: true },
+    },
+  },
   build: {
     outDir: "dist",
     chunkSizeWarningLimit: 2000,

@@ -57,9 +57,22 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     }
     try {
       const remoteOrders = await fetchOrders();
-      if (Array.isArray(remoteOrders)) {
-        setOrders(remoteOrders);
-      }
+      if (!Array.isArray(remoteOrders)) return;
+      setOrders((prev) => {
+        const map = new Map<string, Order>();
+        remoteOrders.forEach((o) => {
+          const key = o.id || o.number;
+          if (key) map.set(key, o);
+        });
+        const cutoff = Date.now() - 30_000;
+        prev.forEach((o) => {
+          const key = o.id || o.number;
+          if (!key || map.has(key)) return;
+          const ts = typeof o.id === "string" && o.id.startsWith("o_") ? Number(o.id.replace("o_", "")) : 0;
+          if (ts && ts >= cutoff) map.set(key, o);
+        });
+        return Array.from(map.values());
+      });
     } catch (err) {
       console.warn("[OrderContext] refreshOrders notice:", err);
     }
@@ -67,9 +80,6 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     refreshOrders();
-    const interval = setInterval(() => {
-      refreshOrders();
-    }, 3000);
 
     const handleFocus = () => refreshOrders();
     const handleOrderPlaced = () => refreshOrders();
@@ -84,7 +94,6 @@ export function OrderProvider({ children }: { children: ReactNode }) {
     window.addEventListener("daily:userLoggedOut", handleUserLogout);
 
     return () => {
-      clearInterval(interval);
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("storage", handleFocus);
       window.removeEventListener("daily:orderPlaced", handleOrderPlaced);
@@ -109,9 +118,11 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
   const createOrder = useCallback(
     (order: Order) => {
-      setOrders((prev) => [order, ...prev]);
+      setOrders((prev) => [order, ...prev.filter((o) => o.id !== order.id && o.number !== order.number)]);
       if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("daily:orderPlaced"));
+        window.setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("daily:orderPlaced"));
+        }, 800);
       }
     },
     [setOrders],

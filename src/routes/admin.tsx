@@ -30,7 +30,6 @@ import {
 } from "react-icons/fi";
 import { toast } from "sonner";
 import { PageTransition, FadeIn } from "@/components/PageTransition";
-import { useOrders } from "@/context/OrderContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { products as initialProducts, getStoredProducts, saveStoredProducts, type Product } from "@/data/products";
@@ -59,7 +58,6 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const navigate = useNavigate();
-  const { orders } = useOrders();
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
@@ -74,7 +72,7 @@ function AdminPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "orders" | "products" | "customers" | "reviews">("overview");
 
   // Local state for administrative management
-  const [adminOrders, setAdminOrders] = useState<AdminOrder[]>(orders as any);
+  const [adminOrders, setAdminOrders] = useState<AdminOrder[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(false);
   const [selectedOrderForModal, setSelectedOrderForModal] = useState<AdminOrder | null>(null);
 
@@ -138,43 +136,32 @@ function AdminPage() {
     setIsLoadingOrders(true);
     try {
       const data = await fetchAdminOrders();
-      if (Array.isArray(data) && data.length > 0) {
-        const filtered = data.filter(
-          (o: any) =>
-            !["o1001", "o1000", "o999", "#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.id) &&
-            !["#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.number)
-        );
+      const list = Array.isArray(data) ? data : [];
+      const filtered = list.filter(
+        (o: any) =>
+          !["o1001", "o1000", "o999", "#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.id) &&
+          !["#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.number)
+      );
 
-        filtered.sort((a: any, b: any) => {
-          const getTs = (item: any) => {
-            if (item.createdAt) return new Date(item.createdAt).getTime();
-            if (typeof item.id === "string" && item.id.startsWith("o_")) {
-              const num = Number(item.id.replace("o_", ""));
-              if (!isNaN(num)) return num;
-            }
-            if (item.date) {
-              const parsed = new Date(item.date).getTime();
-              if (!isNaN(parsed)) return parsed;
-            }
-            return 0;
-          };
-          return getTs(b) - getTs(a);
-        });
+      filtered.sort((a: any, b: any) => {
+        const getTs = (item: any) => {
+          if (item.createdAt) return new Date(item.createdAt).getTime();
+          if (typeof item.id === "string" && item.id.startsWith("o_")) {
+            const num = Number(item.id.replace("o_", ""));
+            if (!isNaN(num)) return num;
+          }
+          if (item.date) {
+            const parsed = new Date(item.date).getTime();
+            if (!isNaN(parsed)) return parsed;
+          }
+          return 0;
+        };
+        return getTs(b) - getTs(a);
+      });
 
-        setAdminOrders(filtered);
-      } else {
-        // If API returns empty or falls back, use context orders filtered for mock data
-        const fallback = Array.isArray(orders)
-          ? orders.filter(
-              (o: any) =>
-                !["o1001", "o1000", "o999", "#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.id) &&
-                !["#DLY-1001", "#DLY-1000", "#DLY-0999"].includes(o.number)
-            )
-          : [];
-        setAdminOrders(fallback as any);
-      }
+      setAdminOrders(filtered);
     } catch {
-      setAdminOrders(orders as any);
+      setAdminOrders([]);
     } finally {
       setIsLoadingOrders(false);
     }
@@ -214,21 +201,13 @@ function AdminPage() {
     }
   };
 
-  // Continuous real-time auto-polling loop & event listeners for live updates
+  // Load admin data once, then refresh on focus / order events
   useEffect(() => {
     if (!isAdminAuthenticated) return;
 
-    // 1. Initial Load
     loadAdminOrders();
     loadUsersList();
 
-    // 2. Set up 3-second auto-polling interval for live MongoDB Atlas sync
-    const pollInterval = setInterval(() => {
-      loadAdminOrders();
-      loadUsersList();
-    }, 3000);
-
-    // 3. Re-sync immediately on window focus or custom events (order placement, user registration)
     const handleSyncEvents = () => {
       loadAdminOrders();
       loadUsersList();
@@ -240,13 +219,12 @@ function AdminPage() {
     window.addEventListener("daily:userRegistered", handleSyncEvents);
 
     return () => {
-      clearInterval(pollInterval);
       window.removeEventListener("focus", handleSyncEvents);
       window.removeEventListener("storage", handleSyncEvents);
       window.removeEventListener("daily:orderPlaced", handleSyncEvents);
       window.removeEventListener("daily:userRegistered", handleSyncEvents);
     };
-  }, [isAdminAuthenticated, orders, user]);
+  }, [isAdminAuthenticated, user]);
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -354,18 +332,19 @@ function AdminPage() {
 
   // Filtered orders list for order manager
   const filteredOrders = adminOrders.filter((o) => {
+    const q = searchQuery.toLowerCase();
     const matchesFilter =
       orderFilter === "all" ||
-      o.status.toLowerCase() === orderFilter.toLowerCase() ||
+      (o.status || "").toLowerCase() === orderFilter.toLowerCase() ||
       (orderFilter === "Out for Delivery" && o.status === "On the way") ||
       (orderFilter === "On the way" && o.status === "Out for Delivery");
 
     const matchesSearch =
-      o.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (o.userName && o.userName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (o.userEmail && o.userEmail.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (o.items && o.items.some((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase())));
+      (o.number || "").toLowerCase().includes(q) ||
+      (o.address || "").toLowerCase().includes(q) ||
+      (o.userName && o.userName.toLowerCase().includes(q)) ||
+      (o.userEmail && o.userEmail.toLowerCase().includes(q)) ||
+      (o.items && o.items.some((i) => (i.name || "").toLowerCase().includes(q)));
 
     return matchesFilter && matchesSearch;
   });
