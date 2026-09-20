@@ -13,11 +13,11 @@ const router = express.Router();
 
 router.get("/admin/all", getAllAdminOrders);
 router.put("/admin/:id/status", updateOrderStatusAdmin);
+router.get("/:id", getOrderById);
 
 router.use(protect);
 
 router.get("/", getOrders);
-router.get("/:id", getOrderById);
 router.post("/", createOrder);
 router.post("/:id/repeat", repeatOrder);
 

@@ -61,18 +61,36 @@ export const getOrders = async (req, res, next) => {
 
 export const getOrderById = async (req, res, next) => {
   try {
+    await connectDB();
     const { id } = req.params;
 
     let order = null;
     try {
-      order = await Order.findOne({ id }).select("-__v");
+      const isObjectId = Boolean(id.match(/^[0-9a-fA-F]{24}$/));
+      const queryConditions = [
+        { id: id },
+        { number: id },
+        { number: `#${id}` },
+        { number: id.startsWith("#") ? id : `#DLY-${id.replace(/^DLY-?/i, "")}` },
+      ];
+      if (isObjectId) queryConditions.push({ _id: id });
+
+      order = await Order.findOne({ $or: queryConditions }).select("-__v");
     } catch (err) {
-      console.warn(`[Order] DB fetch for ${id} failed`);
+      console.warn(`[Order] DB fetch for ${id} failed:`, err.message);
     }
 
     if (!order) {
       const diskOrders = readCollection("orders", fallbackOrders);
-      order = diskOrders.find((o) => o.id === id || o.number === id) || null;
+      order =
+        diskOrders.find(
+          (o) =>
+            o.id === id ||
+            o.number === id ||
+            o.number === `#${id}` ||
+            o.id?.toLowerCase() === id.toLowerCase() ||
+            o.number?.toLowerCase() === id.toLowerCase()
+        ) || null;
     }
 
     if (!order) {

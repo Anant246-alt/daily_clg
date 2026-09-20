@@ -21,7 +21,7 @@ function OrderSuccessPage() {
   const { lastOrder, orders } = useOrders();
   const number = lastOrder?.number ?? "#DLY-1002";
   const eta = lastOrder?.eta ?? "25 – 35 min";
-  const trackId = orders[0]?.id ?? "o1001";
+  const trackId = lastOrder?.id || lastOrder?.number?.replace("#", "") || orders[0]?.id || "o1001";
 
   return (
     <AppShell title="Order placed">

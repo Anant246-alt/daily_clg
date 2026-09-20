@@ -135,7 +135,7 @@ function CheckoutPage() {
             };
             createOrder(newOrderObj);
 
-            setLastOrder({ number: verifyRes.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
+            setLastOrder({ id: newOrderObj.id, number: verifyRes.orderNumber || newOrderObj.number || "#DLY-1002", eta: "25 – 35 min" });
             cart.clearCart();
             setShowOtpModal(false);
             setLoading(false);
@@ -229,7 +229,7 @@ function CheckoutPage() {
     };
     createOrder(newOrderObj);
 
-    setLastOrder({ number: res.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
+    setLastOrder({ id: newOrderObj.id, number: res.orderNumber || newOrderObj.number || "#DLY-1002", eta: "25 – 35 min" });
     cart.clearCart();
     setLoading(false);
     toast.success("Order placed successfully via Cash on Delivery");
