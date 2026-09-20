@@ -11,10 +11,11 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.use(protect);
-
 router.get("/admin/all", getAllAdminOrders);
 router.put("/admin/:id/status", updateOrderStatusAdmin);
+
+router.use(protect);
+
 router.get("/", getOrders);
 router.get("/:id", getOrderById);
 router.post("/", createOrder);

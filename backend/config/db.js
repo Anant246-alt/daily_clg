@@ -12,17 +12,15 @@ export const connectDB = async () => {
 
   try {
     const conn = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 2000,
-      connectTimeoutMS: 2000,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      bufferCommands: false,
     });
     console.log(`[MongoDB Atlas] Connected to cloud database: ${conn.connection.host}`);
     if (process.env.SEED_DB === "true") {
       await seedDatabase();
     }
   } catch (error) {
-    // Quiet debug notice to keep Vercel logs clean while using persistent disk DB fallback
-    if (process.env.NODE_ENV !== "production") {
-      console.log(`[Database Notice] Operating in fast cloud mode (Atlas IP whitelist required for live DB sync)`);
-    }
+    console.warn(`[Database Warning] Atlas Connection failed: ${error.message}`);
   }
 };

@@ -4,12 +4,13 @@ import { Notification } from "../models/Notification.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { getOrderConfirmationTemplate } from "../utils/emailTemplates.js";
 import { readCollection, insertDocument, updateDocument } from "../config/fileDb.js";
-import mongoose from "mongoose";
+import { connectDB } from "../config/db.js";
 
 const fallbackOrders = [];
 
 export const getOrders = async (req, res, next) => {
   try {
+    await connectDB();
     const userId = String(req.user._id || req.user.id || "").toLowerCase();
     const userEmail = String(req.user.email || "").toLowerCase();
     const userPhone = String(req.user.phone || "").replace(/\D/g, "");
@@ -86,6 +87,7 @@ export const getOrderById = async (req, res, next) => {
 
 export const getAllAdminOrders = async (req, res, next) => {
   try {
+    await connectDB();
     let dbOrders = [];
     try {
       dbOrders = await Order.find({})
@@ -158,6 +160,7 @@ export const getAllAdminOrders = async (req, res, next) => {
 
 export const updateOrderStatusAdmin = async (req, res, next) => {
   try {
+    await connectDB();
     const { id } = req.params;
     const { status, paymentStatus, notes } = req.body;
 
@@ -254,6 +257,7 @@ export const updateOrderStatusAdmin = async (req, res, next) => {
 
 export const createOrder = async (req, res, next) => {
   try {
+    await connectDB();
     const userId = req.user._id || req.user.id;
     const userName = req.user.name || req.body.userName || "Customer";
     const userEmail = req.user.email || "dailyclgproject@gmail.com";
