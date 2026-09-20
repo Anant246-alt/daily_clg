@@ -287,6 +287,16 @@ export const verifyOtp = async (req, res) => {
       }
     }
 
+    if (user && user.save && typeof user.save === "function") {
+      try {
+        user.lastLoginAt = new Date();
+        user.status = user.status || "active";
+        await user.save();
+      } catch (saveErr) {
+        console.warn("[verifyOtp save notice]:", saveErr?.message);
+      }
+    }
+
     const userIdToUse = user._id ? user._id.toString() : user.id;
     const token = generateToken(userIdToUse, user.email);
 
@@ -301,6 +311,8 @@ export const verifyOtp = async (req, res) => {
         email: user.email,
         phone: user.phone || "+91 98765 43210",
         avatar: user.avatar || "",
+        status: user.status || "active",
+        lastLoginAt: user.lastLoginAt || new Date(),
       },
       message: isNewUser ? "Registration successful! Welcome to Daily." : "Login successful! Welcome back.",
     });
@@ -353,6 +365,8 @@ export const getAllUsers = async (req, res, next) => {
           email: u.email,
           phone: u.phone || "+91 98765 43210",
           avatar: u.avatar || "",
+          status: u.status || "active",
+          lastLoginAt: u.lastLoginAt || u.updatedAt || u.createdAt || new Date(),
           createdAt: u.createdAt || new Date(),
         });
       }
@@ -368,12 +382,51 @@ export const getAllUsers = async (req, res, next) => {
           email: u.email,
           phone: u.phone || "+91 98765 43210",
           avatar: u.avatar || "",
+          status: u.status || "active",
+          lastLoginAt: u.lastLoginAt || u.updatedAt || u.createdAt || new Date(),
           createdAt: u.createdAt || new Date(),
         });
       }
     }
 
-    const usersList = Array.from(mergedMap.values());
+    // Aggregate user order stats (totalOrders & totalSpent)
+    let allOrders = [];
+    try {
+      if (mongoose.connection.readyState >= 1) {
+        const dbOrders = await mongoose.model("Order").find({}).lean();
+        allOrders = dbOrders || [];
+      }
+    } catch {
+      /* ignore */
+    }
+    const diskOrders = readCollection("orders", []);
+    const ordersCombined = [...allOrders, ...diskOrders];
+
+    const usersList = Array.from(mergedMap.values()).map((u) => {
+      const uEmail = String(u.email || "").toLowerCase();
+      const uId = String(u.id || u._id || "").toLowerCase();
+
+      const userOrders = ordersCombined.filter((o) => {
+        const oEmail = String(o.userEmail || o.email || "").toLowerCase();
+        const oUser = String(o.user || "").toLowerCase();
+        return (uEmail && (oEmail === uEmail || oUser === uEmail)) || (uId && oUser === uId);
+      });
+
+      const totalOrders = userOrders.length;
+      const totalSpent = userOrders.reduce((sum, o) => {
+        if (o.status !== "Cancelled" && (o.paymentStatus === "Paid" || o.status === "Delivered" || !o.paymentStatus)) {
+          return sum + (Number(o.total) || 0);
+        }
+        return sum;
+      }, 0);
+
+      return {
+        ...u,
+        totalOrders,
+        totalSpent,
+      };
+    });
+
     return res.status(200).json({
       success: true,
       count: usersList.length,
@@ -383,3 +436,4 @@ export const getAllUsers = async (req, res, next) => {
     next(error);
   }
 };
+

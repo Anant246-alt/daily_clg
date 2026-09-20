@@ -159,7 +159,7 @@ export const getAllAdminOrders = async (req, res, next) => {
 export const updateOrderStatusAdmin = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, paymentStatus } = req.body;
+    const { status, paymentStatus, notes } = req.body;
 
     let updatedOrder = null;
 
@@ -173,8 +173,23 @@ export const updateOrderStatusAdmin = async (req, res, next) => {
       });
 
       if (order) {
+        const previousStatus = order.status;
         if (status) order.status = status;
         if (paymentStatus) order.paymentStatus = paymentStatus;
+
+        if (status && status !== previousStatus) {
+          const now = new Date();
+          const formattedTime = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
+          order.statusHistory = order.statusHistory || [];
+          order.statusHistory.push({
+            previousStatus: previousStatus || "Order Placed",
+            newStatus: status,
+            timestamp: now,
+            formattedTime,
+            actor: req.user?.role === "admin" ? "admin" : "admin",
+            notes: notes || `Order status updated from '${previousStatus || "Order Placed"}' to '${status}' by Admin`,
+          });
+        }
 
         if (order.timeline && Array.isArray(order.timeline)) {
           const nowTimeStr = new Date().toLocaleTimeString("en-US", {
@@ -262,6 +277,15 @@ export const createOrder = async (req, res, next) => {
     const isCod = (paymentMethod || "").toLowerCase().includes("cod") || (paymentMethod || "").toLowerCase().includes("cash");
     const pStatus = isCod ? "Pending" : "Paid";
 
+    const initialAudit = {
+      previousStatus: "",
+      newStatus: "Preparing",
+      timestamp: now,
+      formattedTime: dateStr,
+      actor: "customer",
+      notes: "Order placed successfully by customer",
+    };
+
     const newOrderData = {
       user: userId,
       userName,
@@ -287,10 +311,12 @@ export const createOrder = async (req, res, next) => {
         { label: "Out for delivery", time: "—", done: false },
         { label: "Delivered", time: "—", done: false },
       ],
+      statusHistory: [initialAudit],
       razorpayOrderId: razorpayOrderId || "",
       razorpayPaymentId: razorpayPaymentId || "",
       razorpaySignature: razorpaySignature || "",
     };
+
 
     let createdOrder = newOrderData;
     try {

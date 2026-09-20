@@ -86,6 +86,7 @@ function AdminPage() {
   const [isNewProduct, setIsNewProduct] = useState<boolean>(false);
   const [productCategoryFilter, setProductCategoryFilter] = useState<string>("all");
   const [productSearchQuery, setProductSearchQuery] = useState<string>("");
+  const [customerSearchQuery, setCustomerSearchQuery] = useState<string>("");
 
   // Sync stored products on mount
   useEffect(() => {
@@ -207,6 +208,7 @@ function AdminPage() {
             name: user.name,
             email: user.email,
             phone: user.phone || "+91 98765 43210",
+            status: "active",
             ...(user.avatar ? { avatar: user.avatar } : {}),
           },
         ]);
@@ -219,6 +221,7 @@ function AdminPage() {
             name: user.name,
             email: user.email,
             phone: user.phone || "+91 98765 43210",
+            status: "active",
             ...(user.avatar ? { avatar: user.avatar } : {}),
           },
         ]);
@@ -280,9 +283,12 @@ function AdminPage() {
   // Update order status dynamically in MongoDB Atlas and local state
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string, newPaymentStatus?: string) => {
     const nowTimeStr = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+    const now = new Date();
+    const formattedTime = `${now.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}, ${now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}`;
 
     const updated = adminOrders.map((o) => {
       if (o.id === orderId || o.number === orderId) {
+        const previousStatus = o.status;
         const newTimeline = (o.timeline || []).map((t) => {
           if (newStatus === "Preparing" && (t.label.includes("Preparing") || t.label.includes("placed") || t.label.includes("confirmed"))) {
             return { ...t, done: true, time: t.time === "—" ? nowTimeStr : t.time };
@@ -296,11 +302,21 @@ function AdminPage() {
           return t;
         });
 
+        const newAudit = {
+          previousStatus: previousStatus || "Order Placed",
+          newStatus,
+          timestamp: now,
+          formattedTime,
+          actor: "admin",
+          notes: `Status updated from '${previousStatus || "Order Placed"}' to '${newStatus}' by Admin`,
+        };
+
         return {
           ...o,
           status: newStatus,
           paymentStatus: newPaymentStatus || o.paymentStatus || "Paid",
           timeline: newTimeline,
+          statusHistory: [...(o.statusHistory || []), newAudit],
         };
       }
       return o;
@@ -318,16 +334,35 @@ function AdminPage() {
     }
   };
 
-  // Calculate Metrics from real order data
-  const totalOrders = adminOrders.length;
-  const totalRevenue = adminOrders.reduce(
-    (sum, o) =>
-      sum +
-      (o.status !== "Cancelled" && (o.paymentStatus === "Paid" || o.status === "Delivered" || !o.paymentStatus)
-        ? o.total
-        : 0),
-    0
+  // Calculate Financial Aggregation & Order Metrics
+  const validPaidOrders = adminOrders.filter(
+    (o) => o.status !== "Cancelled" && (o.paymentStatus === "Paid" || o.status === "Delivered" || !o.paymentStatus)
   );
+
+  const nowMs = Date.now();
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).getTime();
+  const weekAgo = nowMs - 7 * 24 * 60 * 60 * 1000;
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+
+  const getOrderTimestamp = (o: AdminOrder): number => {
+    if (o.createdAt) return new Date(o.createdAt).getTime();
+    if (typeof o.id === "string" && o.id.startsWith("o_")) {
+      const num = Number(o.id.replace("o_", ""));
+      if (!isNaN(num)) return num;
+    }
+    if (o.date) {
+      const parsed = new Date(o.date).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    return 0;
+  };
+
+  const totalOrders = adminOrders.length;
+  const totalRevenue = validPaidOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
+  const revenueToday = validPaidOrders.reduce((sum, o) => (getOrderTimestamp(o) >= todayStart ? sum + (Number(o.total) || 0) : sum), 0);
+  const revenueThisWeek = validPaidOrders.reduce((sum, o) => (getOrderTimestamp(o) >= weekAgo ? sum + (Number(o.total) || 0) : sum), 0);
+  const revenueThisMonth = validPaidOrders.reduce((sum, o) => (getOrderTimestamp(o) >= monthStart ? sum + (Number(o.total) || 0) : sum), 0);
+
   const activeOrders = adminOrders.filter(
     (o) => o.status === "Preparing" || o.status === "On the way" || o.status === "Out for Delivery"
   ).length;
@@ -513,16 +548,47 @@ function AdminPage() {
         {/* TAB 1: OVERVIEW & ANALYTICS */}
         {activeTab === "overview" && (
           <FadeIn className="space-y-6">
-            {/* Top Metrics Cards Grid */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <AdminMetricCard
-                icon={FiDollarSign}
-                label="Total Store Revenue"
-                value={currency(totalRevenue)}
-                subtext="From paid & completed orders"
-                color="text-emerald-500"
-                bgColor="bg-emerald-500/10"
-              />
+            {/* Financial Aggregation Cards Grid */}
+            <div className="space-y-2">
+              <h2 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Financial & Revenue Breakdown</h2>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <AdminMetricCard
+                  icon={FiDollarSign}
+                  label="Revenue Today"
+                  value={currency(revenueToday)}
+                  subtext="Orders placed today"
+                  color="text-emerald-500"
+                  bgColor="bg-emerald-500/10"
+                />
+                <AdminMetricCard
+                  icon={FiDollarSign}
+                  label="Revenue This Week"
+                  value={currency(revenueThisWeek)}
+                  subtext="Last 7 days revenue"
+                  color="text-emerald-500"
+                  bgColor="bg-emerald-500/10"
+                />
+                <AdminMetricCard
+                  icon={FiDollarSign}
+                  label="Revenue This Month"
+                  value={currency(revenueThisMonth)}
+                  subtext="Current month total"
+                  color="text-emerald-500"
+                  bgColor="bg-emerald-500/10"
+                />
+                <AdminMetricCard
+                  icon={FiDollarSign}
+                  label="All-Time Revenue"
+                  value={currency(totalRevenue)}
+                  subtext="Total successful payments"
+                  color="text-emerald-500"
+                  bgColor="bg-emerald-500/10"
+                />
+              </div>
+            </div>
+
+            {/* General Operations Metrics */}
+            <div className="grid grid-cols-3 gap-3">
               <AdminMetricCard
                 icon={FiPackage}
                 label="Total Orders"
@@ -947,7 +1013,7 @@ function AdminPage() {
         {/* TAB 4: REGISTERED CUSTOMERS */}
         {activeTab === "customers" && (
           <FadeIn className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <h2 className="text-lg font-extrabold">Registered Customer Directory</h2>
                 <p className="text-xs text-muted-foreground">MongoDB Atlas & customer accounts ({registeredUsers.length})</p>
@@ -963,48 +1029,100 @@ function AdminPage() {
               </button>
             </div>
 
-            {registeredUsers.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {registeredUsers.map((u, index) => (
-                  <div
-                    key={u.id || index}
-                    className="flex items-center gap-4 rounded-3xl border border-border bg-card p-4 shadow-sm hover:border-primary/40 transition"
-                  >
-                    {u.avatar ? (
-                      <img src={u.avatar} alt={u.name} className="size-12 rounded-2xl object-cover shrink-0" />
-                    ) : (
-                      <div className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary text-lg font-black shrink-0">
-                        {(u.name || u.email || "U").slice(0, 1).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1 space-y-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="font-extrabold text-sm truncate">{u.name || "Registered Customer"}</h3>
-                        {u.email === user?.email && (
-                          <span className="rounded-md bg-primary-soft px-1.5 py-0.5 text-[9px] font-bold text-primary">
-                            You
-                          </span>
-                        )}
-                      </div>
-                      {u.email && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                          <FiMail className="size-3 shrink-0" /> <span className="truncate">{u.email}</span>
-                        </p>
-                      )}
-                      {u.phone && (
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                          <FiPhone className="size-3 shrink-0" /> <span className="truncate">{u.phone}</span>
-                        </p>
-                      )}
-                    </div>
+            {/* Customer Search Bar */}
+            <div className="relative">
+              <input
+                type="text"
+                value={customerSearchQuery}
+                onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                placeholder="Search customers by email, phone, or name..."
+                className="w-full rounded-2xl border border-border bg-card py-2.5 pl-10 pr-4 text-xs outline-none focus:border-primary transition"
+              />
+              <FiSearch className="absolute left-3.5 top-3 text-muted-foreground size-4" />
+            </div>
+
+            {(() => {
+              const filteredUsers = registeredUsers.filter((u) => {
+                const query = customerSearchQuery.toLowerCase();
+                return (
+                  (u.name && u.name.toLowerCase().includes(query)) ||
+                  (u.email && u.email.toLowerCase().includes(query)) ||
+                  (u.phone && u.phone.replace(/\D/g, "").includes(query))
+                );
+              });
+
+              if (filteredUsers.length === 0) {
+                return (
+                  <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
+                    No customer accounts match your search filter.
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-3xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
-                No customer accounts found.
-              </div>
-            )}
+                );
+              }
+
+              return (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredUsers.map((u, index) => (
+                    <div
+                      key={u.id || index}
+                      className="flex flex-col justify-between rounded-3xl border border-border bg-card p-4 shadow-sm hover:border-primary/40 transition space-y-3"
+                    >
+                      <div className="flex items-start gap-3">
+                        {u.avatar ? (
+                          <img src={u.avatar} alt={u.name} className="size-12 rounded-2xl object-cover shrink-0" />
+                        ) : (
+                          <div className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary text-lg font-black shrink-0">
+                            {(u.name || u.email || "U").slice(0, 1).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h3 className="font-extrabold text-sm truncate">{u.name || "Registered Customer"}</h3>
+                            {u.email === user?.email && (
+                              <span className="rounded-md bg-primary-soft px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                                You
+                              </span>
+                            )}
+                            <span className={cn(
+                              "rounded-md px-1.5 py-0.5 text-[9px] font-extrabold uppercase",
+                              u.status === "blocked" ? "bg-destructive/10 text-destructive border border-destructive/20" : "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+                            )}>
+                              {u.status || "Active"}
+                            </span>
+                          </div>
+                          {u.email && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                              <FiMail className="size-3 shrink-0" /> <span className="truncate">{u.email}</span>
+                            </p>
+                          )}
+                          {u.phone && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                              <FiPhone className="size-3 shrink-0" /> <span className="truncate">{u.phone}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Customer Analytics Metrics */}
+                      <div className="grid grid-cols-2 gap-2 border-t border-border pt-2 text-[11px]">
+                        <div className="rounded-xl border border-border bg-muted/40 p-2 text-center">
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase">Total Orders</p>
+                          <p className="text-sm font-black text-foreground">{u.totalOrders || 0}</p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-muted/40 p-2 text-center">
+                          <p className="text-[10px] text-muted-foreground font-bold uppercase">Total Spent</p>
+                          <p className="text-sm font-black text-primary">{currency(u.totalSpent || 0)}</p>
+                        </div>
+                      </div>
+
+                      <div className="text-[10px] text-muted-foreground flex items-center justify-between pt-1">
+                        <span>Last Active: {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString("en-IN") : "Recently"}</span>
+                        <span>Registered: {u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "N/A"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </FadeIn>
         )}
 
@@ -1290,6 +1408,35 @@ function OrderDetailsModal({
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Permanent Status Audit History Log */}
+        {order.statusHistory && order.statusHistory.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <FiClock className="text-primary" /> Permanent Status Audit Log Trail
+            </h4>
+            <div className="rounded-2xl border border-border bg-background p-3.5 divide-y divide-border text-xs space-y-2">
+              {order.statusHistory.map((audit, idx) => (
+                <div key={idx} className="pt-2 first:pt-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-foreground">
+                        {audit.previousStatus ? `${audit.previousStatus} → ` : ""}{audit.newStatus}
+                      </span>
+                      <span className="rounded-md bg-muted px-2 py-0.5 text-[10px] font-bold uppercase text-muted-foreground">
+                        Actor: {audit.actor || "admin"}
+                      </span>
+                    </div>
+                    {audit.notes && <p className="text-[11px] text-muted-foreground mt-0.5">{audit.notes}</p>}
+                  </div>
+                  <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+                    {audit.formattedTime || (audit.timestamp ? new Date(audit.timestamp).toLocaleString("en-IN") : "")}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}

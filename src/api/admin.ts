@@ -7,7 +7,11 @@ export type AdminUser = {
   email: string;
   phone?: string | undefined;
   avatar?: string | undefined;
+  status?: "active" | "blocked" | string | undefined;
+  lastLoginAt?: string | undefined;
   createdAt?: string | undefined;
+  totalOrders?: number | undefined;
+  totalSpent?: number | undefined;
 };
 
 export type AdminOrderItem = {
@@ -21,6 +25,15 @@ export type AdminTimelineItem = {
   label: string;
   time: string;
   done: boolean;
+};
+
+export type AdminStatusAudit = {
+  previousStatus?: string | undefined;
+  newStatus: string;
+  timestamp?: string | Date | undefined;
+  formattedTime?: string | undefined;
+  actor?: "user" | "admin" | "system" | string | undefined;
+  notes?: string | undefined;
 };
 
 export type AdminOrder = {
@@ -40,6 +53,7 @@ export type AdminOrder = {
   userPhone?: string | undefined;
   items: AdminOrderItem[];
   timeline: AdminTimelineItem[];
+  statusHistory?: AdminStatusAudit[] | undefined;
   razorpayOrderId?: string | undefined;
   razorpayPaymentId?: string | undefined;
   razorpaySignature?: string | undefined;

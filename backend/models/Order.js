@@ -13,6 +13,15 @@ const timelineSchema = new mongoose.Schema({
   done: { type: Boolean, default: false },
 });
 
+const statusAuditSchema = new mongoose.Schema({
+  previousStatus: { type: String, default: "" },
+  newStatus: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now },
+  formattedTime: { type: String, default: "" },
+  actor: { type: String, default: "system" },
+  notes: { type: String, default: "" },
+});
+
 const orderSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
@@ -38,6 +47,7 @@ const orderSchema = new mongoose.Schema(
     address: { type: String, required: true },
     items: [orderItemSchema],
     timeline: [timelineSchema],
+    statusHistory: [statusAuditSchema],
     razorpayOrderId: { type: String, default: "" },
     razorpayPaymentId: { type: String, default: "" },
     razorpaySignature: { type: String, default: "" },
