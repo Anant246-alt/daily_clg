@@ -63,6 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         /* fallback to verifyOtp user */
       }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("daily:userRegistered"));
+      }
       return res;
     },
     [setUser],

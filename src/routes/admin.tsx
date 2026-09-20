@@ -26,6 +26,7 @@ import {
   FiTrash2,
   FiUpload,
   FiImage,
+  FiEye,
 } from "react-icons/fi";
 import { toast } from "sonner";
 import { PageTransition, FadeIn } from "@/components/PageTransition";
@@ -33,7 +34,13 @@ import { useOrders } from "@/context/OrderContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { products as initialProducts, getStoredProducts, saveStoredProducts, type Product } from "@/data/products";
-import { fetchAdminUsers, type AdminUser } from "@/api/admin";
+import {
+  fetchAdminUsers,
+  fetchAdminOrders,
+  updateAdminOrderStatus,
+  type AdminUser,
+  type AdminOrder,
+} from "@/api/admin";
 import { api } from "@/api/client";
 import { currency } from "@/utils/format";
 import { cn } from "@/lib/utils";
@@ -52,7 +59,7 @@ export const Route = createFileRoute("/admin")({
 
 function AdminPage() {
   const navigate = useNavigate();
-  const { orders, createOrder } = useOrders();
+  const { orders } = useOrders();
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
@@ -67,7 +74,10 @@ function AdminPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "orders" | "products" | "customers" | "reviews">("overview");
 
   // Local state for administrative management
-  const [adminOrders, setAdminOrders] = useState(orders);
+  const [adminOrders, setAdminOrders] = useState<AdminOrder[]>(orders as any);
+  const [isLoadingOrders, setIsLoadingOrders] = useState<boolean>(false);
+  const [selectedOrderForModal, setSelectedOrderForModal] = useState<AdminOrder | null>(null);
+
   const [orderFilter, setOrderFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [productList, setProductList] = useState<Product[]>(getStoredProducts);
@@ -120,50 +130,111 @@ function AdminPage() {
     toast.success("Reset menu catalogue to default items!");
   };
 
-  // Sync orders with OrderContext
-  useEffect(() => {
-    setAdminOrders(orders);
-  }, [orders]);
+  // Fetch real customer orders from MongoDB Atlas, OrderContext, and localStorage
+  const loadAdminOrders = async () => {
+    setIsLoadingOrders(true);
+    try {
+      const data = await fetchAdminOrders();
+      let localOrders: any[] = [];
+      try {
+        localOrders = JSON.parse(localStorage.getItem("daily.orders") || "[]");
+      } catch {
+        /* empty */
+      }
+
+      const combinedMap = new Map();
+      if (Array.isArray(data)) {
+        data.forEach((o) => {
+          const key = o.id || o.number;
+          if (key) combinedMap.set(key, o);
+        });
+      }
+      if (Array.isArray(orders)) {
+        orders.forEach((o: any) => {
+          const key = o.id || o.number;
+          if (key && !combinedMap.has(key)) combinedMap.set(key, o);
+        });
+      }
+      if (Array.isArray(localOrders)) {
+        localOrders.forEach((o: any) => {
+          const key = o.id || o.number;
+          if (key && !combinedMap.has(key)) combinedMap.set(key, o);
+        });
+      }
+
+      setAdminOrders(Array.from(combinedMap.values()));
+    } catch {
+      setAdminOrders(orders as any);
+    } finally {
+      setIsLoadingOrders(false);
+    }
+  };
 
   // Fetch all registered customer accounts from MongoDB Atlas & backend
-  useEffect(() => {
-    let isMounted = true;
-    void (async () => {
-      try {
-        const users = await fetchAdminUsers();
-        if (isMounted) {
-          if (Array.isArray(users) && users.length > 0) {
-            setRegisteredUsers(users);
-          } else if (user) {
-            setRegisteredUsers([
-              {
-                id: user.id || "u_me",
-                name: user.name,
-                email: user.email,
-                phone: user.phone || "+91 98765 43210",
-                avatar: user.avatar,
-              },
-            ]);
-          }
-        }
-      } catch {
-        if (isMounted && user) {
-          setRegisteredUsers([
-            {
-              id: user.id || "u_me",
-              name: user.name,
-              email: user.email,
-              phone: user.phone || "+91 98765 43210",
-              avatar: user.avatar,
-            },
-          ]);
-        }
+  const loadUsersList = async () => {
+    try {
+      const users = await fetchAdminUsers();
+      if (Array.isArray(users) && users.length > 0) {
+        setRegisteredUsers(users);
+      } else if (user) {
+        setRegisteredUsers([
+          {
+            id: user.id || "u_me",
+            name: user.name,
+            email: user.email,
+            phone: user.phone || "+91 98765 43210",
+            ...(user.avatar ? { avatar: user.avatar } : {}),
+          },
+        ]);
       }
-    })();
-    return () => {
-      isMounted = false;
+    } catch {
+      if (user) {
+        setRegisteredUsers([
+          {
+            id: user.id || "u_me",
+            name: user.name,
+            email: user.email,
+            phone: user.phone || "+91 98765 43210",
+            ...(user.avatar ? { avatar: user.avatar } : {}),
+          },
+        ]);
+      }
+    }
+  };
+
+  // Continuous real-time auto-polling loop & event listeners for live updates
+  useEffect(() => {
+    if (!isAdminAuthenticated) return;
+
+    // 1. Initial Load
+    loadAdminOrders();
+    loadUsersList();
+
+    // 2. Set up 3-second auto-polling interval for live MongoDB Atlas sync
+    const pollInterval = setInterval(() => {
+      loadAdminOrders();
+      loadUsersList();
+    }, 3000);
+
+    // 3. Re-sync immediately on window focus or custom events (order placement, user registration)
+    const handleSyncEvents = () => {
+      loadAdminOrders();
+      loadUsersList();
     };
-  }, [user]);
+
+    window.addEventListener("focus", handleSyncEvents);
+    window.addEventListener("storage", handleSyncEvents);
+    window.addEventListener("daily:orderPlaced", handleSyncEvents);
+    window.addEventListener("daily:userRegistered", handleSyncEvents);
+
+    return () => {
+      clearInterval(pollInterval);
+      window.removeEventListener("focus", handleSyncEvents);
+      window.removeEventListener("storage", handleSyncEvents);
+      window.removeEventListener("daily:orderPlaced", handleSyncEvents);
+      window.removeEventListener("daily:userRegistered", handleSyncEvents);
+    };
+  }, [isAdminAuthenticated, orders, user]);
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,46 +253,76 @@ function AdminPage() {
     toast.info("Logged out from Admin Control Panel.");
   };
 
-  // Update order status dynamically in state and localStorage
-  const handleUpdateOrderStatus = (orderId: string, newStatus: any) => {
+  // Update order status dynamically in MongoDB Atlas and local state
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: string, newPaymentStatus?: string) => {
+    const nowTimeStr = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+
     const updated = adminOrders.map((o) => {
-      if (o.id === orderId) {
-        const newTimeline = o.timeline.map((t) => {
+      if (o.id === orderId || o.number === orderId) {
+        const newTimeline = (o.timeline || []).map((t) => {
           if (newStatus === "Preparing" && (t.label.includes("Preparing") || t.label.includes("placed") || t.label.includes("confirmed"))) {
-            return { ...t, done: true };
+            return { ...t, done: true, time: t.time === "—" ? nowTimeStr : t.time };
           }
-          if (newStatus === "On the way" && !t.label.includes("Delivered")) {
-            return { ...t, done: true };
+          if ((newStatus === "On the way" || newStatus === "Out for Delivery") && (t.label.includes("Out for delivery") || t.label.includes("Preparing") || t.label.includes("placed") || t.label.includes("confirmed"))) {
+            return { ...t, done: true, time: t.time === "—" ? nowTimeStr : t.time };
           }
           if (newStatus === "Delivered") {
-            return { ...t, done: true };
+            return { ...t, done: true, time: t.time === "—" ? nowTimeStr : t.time };
           }
           return t;
         });
-        return { ...o, status: newStatus, timeline: newTimeline };
+
+        return {
+          ...o,
+          status: newStatus,
+          paymentStatus: newPaymentStatus || o.paymentStatus || "Paid",
+          timeline: newTimeline,
+        };
       }
       return o;
     });
 
     setAdminOrders(updated);
-    localStorage.setItem("daily.orders", JSON.stringify(updated));
     toast.success(`Order #${orderId} status updated to ${newStatus}`);
+
+    const resOrder = await updateAdminOrderStatus(orderId, newStatus, newPaymentStatus);
+    if (resOrder) {
+      setAdminOrders((prev) => prev.map((o) => (o.id === orderId || o.number === orderId ? resOrder : o)));
+      if (selectedOrderForModal && (selectedOrderForModal.id === orderId || selectedOrderForModal.number === orderId)) {
+        setSelectedOrderForModal(resOrder);
+      }
+    }
   };
 
-  // Calculate Metrics
+  // Calculate Metrics from real order data
   const totalOrders = adminOrders.length;
-  const totalRevenue = adminOrders.reduce((sum, o) => sum + (o.status !== "Cancelled" ? o.total : 0), 0);
-  const activeOrders = adminOrders.filter((o) => o.status === "Preparing" || o.status === "On the way").length;
-  const completedOrders = adminOrders.filter((o) => o.status === "Delivered").length;
-  const cancelledOrders = adminOrders.filter((o) => o.status === "Cancelled").length;
+  const totalRevenue = adminOrders.reduce(
+    (sum, o) =>
+      sum +
+      (o.status !== "Cancelled" && (o.paymentStatus === "Paid" || o.status === "Delivered" || !o.paymentStatus)
+        ? o.total
+        : 0),
+    0
+  );
+  const activeOrders = adminOrders.filter(
+    (o) => o.status === "Preparing" || o.status === "On the way" || o.status === "Out for Delivery"
+  ).length;
 
   // Filtered orders list for order manager
   const filteredOrders = adminOrders.filter((o) => {
-    const matchesFilter = orderFilter === "all" || o.status.toLowerCase() === orderFilter.toLowerCase();
+    const matchesFilter =
+      orderFilter === "all" ||
+      o.status.toLowerCase() === orderFilter.toLowerCase() ||
+      (orderFilter === "Out for Delivery" && o.status === "On the way") ||
+      (orderFilter === "On the way" && o.status === "Out for Delivery");
+
     const matchesSearch =
       o.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       o.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.items.some((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      (o.userName && o.userName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (o.userEmail && o.userEmail.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (o.items && o.items.some((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase())));
+
     return matchesFilter && matchesSearch;
   });
 
@@ -311,23 +412,27 @@ function AdminPage() {
                   Control Panel
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground hidden sm:block">Live store management & fulfillment dashboard</p>
+              <p className="text-xs text-muted-foreground hidden sm:block">Live store management & order fulfillment dashboard</p>
             </div>
           </div>
 
           {/* Header Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
             <button
-              onClick={() => toast.success("Refreshed store metrics and live order stream!")}
-              className="grid size-9 place-items-center rounded-xl border border-border bg-background hover:bg-muted transition"
-              title="Refresh Data"
+              onClick={async () => {
+                await loadAdminOrders();
+                await loadUsersList();
+                toast.success("Refreshed store metrics & live orders from MongoDB Atlas!");
+              }}
+              className="grid size-9 place-items-center rounded-xl border border-border bg-background hover:bg-muted transition cursor-pointer"
+              title="Refresh Data from MongoDB Atlas"
             >
-              <FiRefreshCw className="size-4" />
+              <FiRefreshCw className={cn("size-4", isLoadingOrders && "animate-spin")} />
             </button>
 
             <button
               onClick={toggleTheme}
-              className="grid size-9 place-items-center rounded-xl border border-border bg-background hover:bg-muted transition"
+              className="grid size-9 place-items-center rounded-xl border border-border bg-background hover:bg-muted transition cursor-pointer"
               title="Toggle Theme"
             >
               {theme === "dark" ? "☀️" : "🌙"}
@@ -342,7 +447,7 @@ function AdminPage() {
 
             <button
               onClick={handleAdminLogout}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-bold text-destructive hover:bg-destructive hover:text-destructive-foreground transition"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-bold text-destructive hover:bg-destructive hover:text-destructive-foreground transition cursor-pointer"
             >
               <FiLogOut className="size-3.5" /> Logout
             </button>
@@ -368,7 +473,7 @@ function AdminPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={cn(
-                  "flex shrink-0 items-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-extrabold transition",
+                  "flex shrink-0 items-center gap-2 rounded-2xl px-4 py-2.5 text-xs font-extrabold transition cursor-pointer",
                   isActive
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -390,7 +495,7 @@ function AdminPage() {
                 icon={FiDollarSign}
                 label="Total Store Revenue"
                 value={currency(totalRevenue)}
-                subtext="From completed orders"
+                subtext="From paid & completed orders"
                 color="text-emerald-500"
                 bgColor="bg-emerald-500/10"
               />
@@ -424,10 +529,13 @@ function AdminPage() {
             <div className="grid gap-6 lg:grid-cols-3">
               <div className="rounded-3xl border border-border bg-card p-5 space-y-4 lg:col-span-2">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-base font-extrabold">Recent Live Customer Orders</h2>
+                  <div>
+                    <h2 className="text-base font-extrabold">Recent Live Customer Orders</h2>
+                    <p className="text-xs text-muted-foreground">Stored & synchronized with MongoDB Atlas</p>
+                  </div>
                   <button
                     onClick={() => setActiveTab("orders")}
-                    className="text-xs font-bold text-primary hover:underline"
+                    className="text-xs font-bold text-primary hover:underline cursor-pointer"
                   >
                     Manage all orders →
                   </button>
@@ -438,32 +546,50 @@ function AdminPage() {
                     {adminOrders.slice(0, 4).map((o) => (
                       <div
                         key={o.id}
-                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border p-4 hover:border-primary/30 transition"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-border p-4 hover:border-primary/30 transition bg-background/50"
                       >
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-extrabold text-sm">{o.number}</span>
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-black text-sm">{o.number}</span>
+                            <OrderConfirmedBadge />
                             <OrderStatusBadge status={o.status} />
+                            <PaymentStatusBadge paymentStatus={o.paymentStatus} />
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{o.date}</p>
-                          <p className="text-xs font-medium text-muted-foreground mt-1 line-clamp-1">
+
+                          {o.userName && (
+                            <p className="text-xs font-bold text-foreground">
+                              Customer: {o.userName} {o.userEmail ? `(${o.userEmail})` : ""}
+                            </p>
+                          )}
+
+                          <p className="text-xs text-muted-foreground">{o.date}</p>
+                          <p className="text-xs font-medium text-muted-foreground line-clamp-1">
                             {o.items.map((i) => `${i.qty}x ${i.name}`).join(", ")}
                           </p>
                         </div>
 
-                        <div className="flex items-center justify-between sm:flex-col sm:items-end">
-                          <span className="text-base font-extrabold text-primary">{currency(o.total)}</span>
-                          <StatusSelector
-                            currentStatus={o.status}
-                            onUpdate={(st) => handleUpdateOrderStatus(o.id, st)}
-                          />
+                        <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2">
+                          <span className="text-base font-black text-primary">{currency(o.total)}</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setSelectedOrderForModal(o)}
+                              className="inline-flex items-center gap-1 rounded-xl border border-border bg-card px-2.5 py-1.5 text-xs font-bold hover:bg-muted transition cursor-pointer"
+                            >
+                              <FiEye className="size-3.5" /> Details
+                            </button>
+                            <StatusSelector
+                              currentStatus={o.status}
+                              onUpdate={(st) => handleUpdateOrderStatus(o.id, st, o.paymentStatus)}
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-border p-8 text-center text-xs text-muted-foreground">
-                    No orders placed yet. Live orders will appear here automatically.
+                  <div className="rounded-2xl border border-dashed border-border p-8 text-center text-xs text-muted-foreground space-y-1">
+                    <p className="font-bold text-foreground">No customer orders found in MongoDB Atlas</p>
+                    <p>When customers place orders, they will appear here live with full details.</p>
                   </div>
                 )}
               </div>
@@ -478,12 +604,12 @@ function AdminPage() {
                         setActiveTab("orders");
                         setOrderFilter("Preparing");
                       }}
-                      className="flex w-full items-center justify-between rounded-2xl border border-border p-3 text-xs font-bold hover:bg-muted transition"
+                      className="flex w-full items-center justify-between rounded-2xl border border-border p-3 text-xs font-bold hover:bg-muted transition cursor-pointer"
                     >
                       <span className="flex items-center gap-2">
                         <FiClock className="text-amber-500" /> Filter Kitchen Preparing
                       </span>
-                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-500">
+                      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-500 font-extrabold">
                         {adminOrders.filter((o) => o.status === "Preparing").length}
                       </span>
                     </button>
@@ -491,26 +617,26 @@ function AdminPage() {
                     <button
                       onClick={() => {
                         setActiveTab("orders");
-                        setOrderFilter("On the way");
+                        setOrderFilter("Out for Delivery");
                       }}
-                      className="flex w-full items-center justify-between rounded-2xl border border-border p-3 text-xs font-bold hover:bg-muted transition"
+                      className="flex w-full items-center justify-between rounded-2xl border border-border p-3 text-xs font-bold hover:bg-muted transition cursor-pointer"
                     >
                       <span className="flex items-center gap-2">
                         <FiPackage className="text-blue-500" /> Filter Out For Delivery
                       </span>
-                      <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-blue-500">
-                        {adminOrders.filter((o) => o.status === "On the way").length}
+                      <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-blue-500 font-extrabold">
+                        {adminOrders.filter((o) => o.status === "On the way" || o.status === "Out for Delivery").length}
                       </span>
                     </button>
 
                     <button
                       onClick={() => setActiveTab("products")}
-                      className="flex w-full items-center justify-between rounded-2xl border border-border p-3 text-xs font-bold hover:bg-muted transition"
+                      className="flex w-full items-center justify-between rounded-2xl border border-border p-3 text-xs font-bold hover:bg-muted transition cursor-pointer"
                     >
                       <span className="flex items-center gap-2">
                         <FiGrid className="text-primary" /> View Menu Items Catalogue
                       </span>
-                      <span className="rounded-full bg-primary-soft px-2 py-0.5 text-primary">
+                      <span className="rounded-full bg-primary-soft px-2 py-0.5 text-primary font-extrabold">
                         {productList.length}
                       </span>
                     </button>
@@ -526,18 +652,18 @@ function AdminPage() {
           <FadeIn className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <h2 className="text-lg font-extrabold">Customer Orders Management</h2>
-                <p className="text-xs text-muted-foreground">View and update live fulfillment statuses</p>
+                <h2 className="text-lg font-extrabold">Customer Orders Management ({adminOrders.length})</h2>
+                <p className="text-xs text-muted-foreground">View order details, payment statuses, and update fulfillment tracking</p>
               </div>
 
               {/* Order Status Filters */}
               <div className="no-scrollbar flex gap-1.5 overflow-x-auto">
-                {["all", "Preparing", "On the way", "Delivered", "Cancelled"].map((st) => (
+                {["all", "Preparing", "Out for Delivery", "Delivered", "Cancelled"].map((st) => (
                   <button
                     key={st}
                     onClick={() => setOrderFilter(st)}
                     className={cn(
-                      "rounded-xl px-3 py-1.5 text-xs font-bold capitalize transition",
+                      "rounded-xl px-3 py-1.5 text-xs font-bold capitalize transition shrink-0 cursor-pointer",
                       orderFilter.toLowerCase() === st.toLowerCase()
                         ? "bg-primary text-primary-foreground"
                         : "border border-border bg-card text-muted-foreground hover:bg-muted",
@@ -555,7 +681,7 @@ function AdminPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by order #, address, or item name..."
+                placeholder="Search by order #, customer name, email, address, or item name..."
                 className="w-full rounded-2xl border border-border bg-card py-3 pl-10 pr-4 text-xs outline-none focus:border-primary transition"
               />
               <FiSearch className="absolute left-3.5 top-3.5 text-muted-foreground size-4" />
@@ -563,26 +689,36 @@ function AdminPage() {
 
             {/* Orders Feed */}
             {filteredOrders.length > 0 ? (
-              <div className="grid gap-3 lg:grid-cols-2">
+              <div className="grid gap-4 lg:grid-cols-2">
                 {filteredOrders.map((order) => (
                   <div
                     key={order.id}
                     className="rounded-3xl border border-border bg-card p-5 space-y-3 shadow-sm hover:border-primary/40 transition"
                   >
-                    <div className="flex items-center justify-between border-b border-border pb-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="font-black text-base">{order.number}</span>
+                          <OrderConfirmedBadge />
                           <OrderStatusBadge status={order.status} />
+                          <PaymentStatusBadge paymentStatus={order.paymentStatus} />
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{order.date}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{order.date}</p>
                       </div>
-                      <span className="text-lg font-black text-primary">{currency(order.total)}</span>
+                      <span className="text-xl font-black text-primary">{currency(order.total)}</span>
                     </div>
+
+                    {/* Customer Info */}
+                    {order.userName && (
+                      <div className="rounded-2xl border border-border bg-muted/30 p-2.5 text-xs space-y-0.5">
+                        <p className="font-extrabold text-foreground">{order.userName}</p>
+                        {order.userEmail && <p className="text-muted-foreground">{order.userEmail}</p>}
+                      </div>
+                    )}
 
                     {/* Customer Items & Delivery Address */}
                     <div className="space-y-1 text-xs">
-                      <p className="font-bold text-foreground/90">Items Ordered:</p>
+                      <p className="font-extrabold text-foreground/90">Items Ordered:</p>
                       <ul className="list-disc list-inside text-muted-foreground space-y-0.5">
                         {order.items.map((item, idx) => (
                           <li key={idx}>
@@ -592,25 +728,36 @@ function AdminPage() {
                       </ul>
                     </div>
 
-                    <div className="text-xs text-muted-foreground border-t border-border pt-2.5">
-                      <p className="truncate"><span className="font-bold text-foreground">Delivery:</span> {order.address}</p>
-                      <p><span className="font-bold text-foreground">Payment:</span> {order.paymentMethod}</p>
+                    <div className="text-xs text-muted-foreground border-t border-border pt-2.5 space-y-0.5">
+                      <p className="truncate"><span className="font-bold text-foreground">Delivery Address:</span> {order.address}</p>
+                      <p><span className="font-bold text-foreground">Payment Method:</span> {order.paymentMethod}</p>
                     </div>
 
-                    {/* Interactive Status Update Selector */}
-                    <div className="flex items-center justify-between border-t border-border pt-3">
-                      <span className="text-xs font-extrabold text-muted-foreground uppercase">Update Status:</span>
-                      <StatusSelector
-                        currentStatus={order.status}
-                        onUpdate={(st) => handleUpdateOrderStatus(order.id, st)}
-                      />
+                    {/* Interactive Action Buttons */}
+                    <div className="flex items-center justify-between border-t border-border pt-3 gap-2">
+                      <button
+                        onClick={() => setSelectedOrderForModal(order)}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-primary-soft px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground transition cursor-pointer"
+                      >
+                        <FiEye className="size-4" /> View Details
+                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase hidden sm:inline">Status:</span>
+                        <StatusSelector
+                          currentStatus={order.status}
+                          onUpdate={(st) => handleUpdateOrderStatus(order.id, st, order.paymentStatus)}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center text-xs text-muted-foreground">
-                No orders match your filter criteria.
+              <div className="rounded-3xl border border-dashed border-border bg-card p-12 text-center text-xs text-muted-foreground space-y-2">
+                <FiPackage className="mx-auto size-8 text-muted-foreground/60" />
+                <p className="font-extrabold text-sm text-foreground">No customer orders match your criteria</p>
+                <p>When orders are created in MongoDB Atlas, they will be listed here automatically.</p>
               </div>
             )}
           </FadeIn>
@@ -783,17 +930,10 @@ function AdminPage() {
               </div>
               <button
                 onClick={async () => {
-                  try {
-                    const users = await fetchAdminUsers();
-                    if (Array.isArray(users) && users.length > 0) {
-                      setRegisteredUsers(users);
-                      toast.success(`Refreshed ${users.length} customer accounts`);
-                    }
-                  } catch {
-                    toast.error("Failed to refresh users list");
-                  }
+                  await loadUsersList();
+                  toast.success(`Refreshed ${registeredUsers.length} customer accounts`);
                 }}
-                className="rounded-2xl border border-border bg-background px-3.5 py-1.5 text-xs font-bold hover:bg-muted transition flex items-center gap-1.5"
+                className="rounded-2xl border border-border bg-background px-3.5 py-1.5 text-xs font-bold hover:bg-muted transition flex items-center gap-1.5 cursor-pointer"
               >
                 <FiRefreshCw className="size-3.5" /> Refresh List
               </button>
@@ -863,8 +1003,15 @@ function AdminPage() {
         )}
       </main>
 
-      {/* Product Edit Modal Dialog */}
+      {/* Modals */}
       <AnimatePresence>
+        {selectedOrderForModal && (
+          <OrderDetailsModal
+            order={selectedOrderForModal}
+            onClose={() => setSelectedOrderForModal(null)}
+            onUpdateStatus={handleUpdateOrderStatus}
+          />
+        )}
         {editingProduct && (
           <AdminProductModal
             product={editingProduct}
@@ -910,12 +1057,44 @@ function AdminMetricCard({
   );
 }
 
+function OrderConfirmedBadge() {
+  return (
+    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-extrabold text-emerald-500 flex items-center gap-1">
+      <FiCheckCircle className="size-3" /> Order Confirmed
+    </span>
+  );
+}
+
+function PaymentStatusBadge({ paymentStatus }: { paymentStatus?: string | undefined }) {
+  const status = paymentStatus || "Paid";
+  const getStyle = () => {
+    switch (status) {
+      case "Paid":
+        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+      case "Pending":
+        return "bg-amber-500/10 text-amber-500 border-amber-500/20";
+      case "Failed":
+        return "bg-destructive/10 text-destructive border-destructive/20";
+      default:
+        return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
+    }
+  };
+
+  return (
+    <span className={cn("rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold capitalize flex items-center gap-1", getStyle())}>
+      <FiDollarSign className="size-3" />
+      {status === "Paid" ? "Payment Paid" : status === "Pending" ? "Payment Pending" : "Payment Failed"}
+    </span>
+  );
+}
+
 function OrderStatusBadge({ status }: { status: string }) {
   const getStyle = () => {
     switch (status) {
       case "Preparing":
         return "bg-amber-500/10 text-amber-500 border-amber-500/20";
       case "On the way":
+      case "Out for Delivery":
         return "bg-blue-500/10 text-blue-500 border-blue-500/20";
       case "Delivered":
         return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
@@ -926,9 +1105,11 @@ function OrderStatusBadge({ status }: { status: string }) {
     }
   };
 
+  const label = status === "On the way" ? "Out for Delivery" : status;
+
   return (
     <span className={cn("rounded-full border px-2.5 py-0.5 text-[11px] font-bold capitalize", getStyle())}>
-      {status}
+      {label}
     </span>
   );
 }
@@ -942,15 +1123,172 @@ function StatusSelector({
 }) {
   return (
     <select
-      value={currentStatus}
+      value={currentStatus === "On the way" ? "Out for Delivery" : currentStatus}
       onChange={(e) => onUpdate(e.target.value)}
       className="rounded-xl border border-border bg-background px-2.5 py-1.5 text-xs font-bold outline-none focus:border-primary cursor-pointer transition"
     >
       <option value="Preparing">Preparing</option>
-      <option value="On the way">On the way</option>
+      <option value="Out for Delivery">Out for Delivery</option>
       <option value="Delivered">Delivered</option>
       <option value="Cancelled">Cancelled</option>
     </select>
+  );
+}
+
+function OrderDetailsModal({
+  order,
+  onClose,
+  onUpdateStatus,
+}: {
+  order: AdminOrder;
+  onClose: () => void;
+  onUpdateStatus: (orderId: string, status: string, paymentStatus?: string) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-2xl rounded-3xl border border-border bg-card p-6 shadow-[var(--shadow-float)] space-y-5 my-8 max-h-[90vh] overflow-y-auto"
+      >
+        {/* Modal Header */}
+        <div className="flex items-start justify-between border-b border-border pb-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-xl font-black tracking-tight">{order.number}</h3>
+              <OrderConfirmedBadge />
+              <OrderStatusBadge status={order.status} />
+              <PaymentStatusBadge paymentStatus={order.paymentStatus} />
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Order Placed on <span className="font-semibold text-foreground">{order.date}</span>
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="grid size-9 place-items-center rounded-full border border-border bg-background hover:bg-muted cursor-pointer transition"
+          >
+            <FiX className="size-4" />
+          </button>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 text-xs">
+          {/* Customer Details Box */}
+          <div className="rounded-2xl border border-border bg-muted/40 p-4 space-y-2">
+            <h4 className="font-extrabold text-foreground uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <FiUsers className="text-primary" /> Customer Details
+            </h4>
+            <div className="space-y-1 text-muted-foreground">
+              <p><span className="font-bold text-foreground">Name:</span> {order.userName || "Customer"}</p>
+              <p className="truncate"><span className="font-bold text-foreground">Email:</span> {order.userEmail || "N/A"}</p>
+              <p><span className="font-bold text-foreground">Phone:</span> {order.userPhone || "N/A"}</p>
+              <p className="pt-1"><span className="font-bold text-foreground">Delivery Address:</span></p>
+              <p className="text-foreground/90 font-medium leading-relaxed bg-background p-2 rounded-xl border border-border">
+                {order.address}
+              </p>
+            </div>
+          </div>
+
+          {/* Payment & Order Info Box */}
+          <div className="rounded-2xl border border-border bg-muted/40 p-4 space-y-2">
+            <h4 className="font-extrabold text-foreground uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+              <FiDollarSign className="text-emerald-500" /> Payment & ID Details
+            </h4>
+            <div className="space-y-1 text-muted-foreground">
+              <p><span className="font-bold text-foreground">Payment Method:</span> {order.paymentMethod}</p>
+              <p><span className="font-bold text-foreground">Payment Status:</span> <span className="font-extrabold text-foreground">{order.paymentStatus || "Paid"}</span></p>
+              <p className="truncate"><span className="font-bold text-foreground">System Order ID:</span> <code className="bg-background px-1.5 py-0.5 rounded text-[10px]">{order.id}</code></p>
+              {order.razorpayOrderId && (
+                <p className="truncate"><span className="font-bold text-foreground">Razorpay Order ID:</span> <code className="bg-background px-1.5 py-0.5 rounded text-[10px]">{order.razorpayOrderId}</code></p>
+              )}
+              {order.razorpayPaymentId && (
+                <p className="truncate"><span className="font-bold text-foreground">Razorpay Payment ID:</span> <code className="bg-background px-1.5 py-0.5 rounded text-[10px]">{order.razorpayPaymentId}</code></p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Ordered Products Table */}
+        <div className="space-y-2">
+          <h4 className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground">Ordered Items & Quantities</h4>
+          <div className="rounded-2xl border border-border bg-background overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-muted/60 border-b border-border font-extrabold text-muted-foreground">
+                <tr>
+                  <th className="p-3">Item Name</th>
+                  <th className="p-3 text-center">Qty</th>
+                  <th className="p-3 text-right">Unit Price</th>
+                  <th className="p-3 text-right">Total Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {order.items.map((item, idx) => (
+                  <tr key={idx} className="hover:bg-muted/30">
+                    <td className="p-3 font-extrabold text-foreground">{item.name}</td>
+                    <td className="p-3 text-center font-bold">{item.qty}</td>
+                    <td className="p-3 text-right text-muted-foreground">{currency(item.price)}</td>
+                    <td className="p-3 text-right font-black text-primary">{currency(item.qty * item.price)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Total Amount Callout */}
+        <div className="flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/10 p-4">
+          <div>
+            <p className="text-xs font-bold text-muted-foreground">Total Order Amount</p>
+            <p className="text-2xl font-black text-primary">{currency(order.total)}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs font-extrabold text-foreground">MongoDB Record Verified</p>
+            <p className="text-[11px] text-muted-foreground">Stored in Atlas Cloud Database</p>
+          </div>
+        </div>
+
+        {/* Tracking Timeline */}
+        {order.timeline && order.timeline.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground">Fulfillment Status Timeline</h4>
+            <div className="rounded-2xl border border-border bg-muted/30 p-4">
+              <div className="flex flex-col sm:flex-row justify-between gap-3">
+                {order.timeline.map((step, idx) => (
+                  <div key={idx} className="flex items-center gap-2 sm:flex-col sm:items-center text-center">
+                    <div className={cn("grid size-7 place-items-center rounded-full text-xs font-extrabold", step.done ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted-foreground")}>
+                      {step.done ? <FiCheck className="size-4" /> : idx + 1}
+                    </div>
+                    <div>
+                      <p className="text-xs font-extrabold leading-tight">{step.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{step.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Quick Admin Actions inside modal */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-border pt-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-extrabold text-muted-foreground">Update Status:</span>
+            <StatusSelector
+              currentStatus={order.status}
+              onUpdate={(st) => onUpdateStatus(order.id, st, order.paymentStatus)}
+            />
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full sm:w-auto rounded-2xl bg-primary px-6 py-2.5 text-xs font-extrabold text-primary-foreground shadow-md hover:opacity-90 transition cursor-pointer"
+          >
+            Close Details
+          </button>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -975,8 +1313,14 @@ function AdminProductModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return toast.error("Product name is required");
-    if (!formData.price || formData.price <= 0) return toast.error("Valid price is required");
+    if (!formData.name.trim()) {
+      toast.error("Product name is required");
+      return;
+    }
+    if (!formData.price || formData.price <= 0) {
+      toast.error("Valid price is required");
+      return;
+    }
     onSave(formData);
   };
 
@@ -1080,7 +1424,8 @@ function AdminProductModal({
                         const file = e.target.files?.[0];
                         if (file) {
                           if (file.size > 5 * 1024 * 1024) {
-                            return toast.error("Image file size should be less than 5MB");
+                            toast.error("Image file size should be less than 5MB");
+                            return;
                           }
                           const reader = new FileReader();
                           reader.onload = (event) => {
@@ -1204,3 +1549,4 @@ function AdminProductModal({
     </div>
   );
 }
+

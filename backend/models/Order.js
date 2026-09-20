@@ -15,15 +15,24 @@ const timelineSchema = new mongoose.Schema({
 
 const orderSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    userName: { type: String, default: "" },
+    userEmail: { type: String, default: "" },
+    userPhone: { type: String, default: "" },
     id: { type: String, required: true },
     number: { type: String, required: true },
     date: { type: String, required: true },
     status: {
       type: String,
-      enum: ["Preparing", "On the way", "Delivered", "Cancelled"],
+      enum: ["Preparing", "On the way", "Out for Delivery", "Delivered", "Cancelled"],
       default: "Preparing",
     },
+    paymentStatus: {
+      type: String,
+      enum: ["Paid", "Pending", "Failed"],
+      default: "Paid",
+    },
+    isConfirmed: { type: Boolean, default: true },
     total: { type: Number, required: true },
     paymentMethod: { type: String, required: true },
     address: { type: String, required: true },

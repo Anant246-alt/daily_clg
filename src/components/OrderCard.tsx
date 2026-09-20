@@ -8,10 +8,12 @@ import { currency } from "@/utils/format";
 import { cn } from "@/lib/utils";
 
 const statusStyles: Record<string, string> = {
-  Delivered: "bg-primary-soft text-primary",
-  Preparing: "bg-accent text-accent-foreground",
-  "On the way": "bg-accent text-accent-foreground",
-  Cancelled: "bg-destructive/10 text-destructive",
+  Delivered: "bg-primary-soft text-primary font-extrabold",
+  Preparing: "bg-amber-500/10 text-amber-500 font-extrabold",
+  "On the way": "bg-blue-500/10 text-blue-500 font-extrabold",
+  "Out for Delivery": "bg-blue-500/10 text-blue-500 font-extrabold",
+  "Order Confirmed": "bg-emerald-500/10 text-emerald-500 font-extrabold",
+  Cancelled: "bg-destructive/10 text-destructive font-extrabold",
 };
 
 export function OrderCard({ order }: { order: Order }) {

@@ -3,7 +3,8 @@ import { Cart } from "../models/Cart.js";
 import { Notification } from "../models/Notification.js";
 import { sendEmail } from "../utils/sendEmail.js";
 import { getOrderConfirmationTemplate } from "../utils/emailTemplates.js";
-import { readCollection, insertDocument } from "../config/fileDb.js";
+import { readCollection, insertDocument, updateDocument } from "../config/fileDb.js";
+import mongoose from "mongoose";
 
 const fallbackOrders = [];
 
@@ -86,9 +87,142 @@ export const getOrderById = async (req, res, next) => {
   }
 };
 
+export const getAllAdminOrders = async (req, res, next) => {
+  try {
+    let dbOrders = [];
+    try {
+      dbOrders = await Order.find({})
+        .populate("user", "name email phone")
+        .sort({ createdAt: -1 })
+        .select("-__v");
+    } catch (err) {
+      console.warn("[Admin Orders] DB fetch failed:", err.message);
+    }
+
+    const diskOrders = readCollection("orders", fallbackOrders);
+
+    const combinedMap = new Map();
+    dbOrders.forEach((o) => {
+      const obj = o.toObject ? o.toObject() : o;
+      const key = obj.id || obj.number;
+      if (key) {
+        combinedMap.set(key, {
+          ...obj,
+          userName: obj.userName || obj.user?.name || "Registered Customer",
+          userEmail: obj.userEmail || obj.user?.email || "",
+          userPhone: obj.userPhone || obj.user?.phone || "",
+          paymentStatus: obj.paymentStatus || "Paid",
+          isConfirmed: obj.isConfirmed !== false,
+        });
+      }
+    });
+
+    diskOrders.forEach((o) => {
+      const key = o.id || o.number;
+      if (key && !combinedMap.has(key)) {
+        combinedMap.set(key, {
+          ...o,
+          userName: o.userName || o.name || "Registered Customer",
+          userEmail: o.userEmail || o.email || "",
+          userPhone: o.userPhone || o.phone || "",
+          paymentStatus: o.paymentStatus || "Paid",
+          isConfirmed: o.isConfirmed !== false,
+        });
+      }
+    });
+
+    const finalOrders = Array.from(combinedMap.values());
+    return res.status(200).json(finalOrders);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateOrderStatusAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, paymentStatus } = req.body;
+
+    let updatedOrder = null;
+
+    try {
+      const order = await Order.findOne({
+        $or: [
+          { id },
+          { number: id },
+          { _id: mongoose.Types.ObjectId.isValid(id) ? id : null },
+        ],
+      });
+
+      if (order) {
+        if (status) order.status = status;
+        if (paymentStatus) order.paymentStatus = paymentStatus;
+
+        if (order.timeline && Array.isArray(order.timeline)) {
+          const nowTimeStr = new Date().toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          order.timeline = order.timeline.map((t) => {
+            if (
+              status === "Preparing" &&
+              (t.label.includes("Preparing") ||
+                t.label.includes("placed") ||
+                t.label.includes("confirmed"))
+            ) {
+              return { label: t.label, time: t.time === "—" ? nowTimeStr : t.time, done: true };
+            }
+            if (
+              (status === "On the way" || status === "Out for Delivery") &&
+              (t.label.includes("Out for delivery") ||
+                t.label.includes("Preparing") ||
+                t.label.includes("placed") ||
+                t.label.includes("confirmed"))
+            ) {
+              return { label: t.label, time: t.time === "—" ? nowTimeStr : t.time, done: true };
+            }
+            if (status === "Delivered") {
+              return { label: t.label, time: t.time === "—" ? nowTimeStr : t.time, done: true };
+            }
+            return t;
+          });
+        }
+
+        await order.save();
+        updatedOrder = order.toObject();
+      }
+    } catch (err) {
+      console.warn("[Admin Order Status Update Notice]:", err.message);
+    }
+
+    updateDocument("orders", "id", id, {
+      ...(status ? { status } : {}),
+      ...(paymentStatus ? { paymentStatus } : {}),
+    });
+
+    if (!updatedOrder) {
+      const diskOrders = readCollection("orders", []);
+      updatedOrder = diskOrders.find((o) => o.id === id || o.number === id) || null;
+    }
+
+    if (!updatedOrder) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Order status updated to ${status || updatedOrder.status}`,
+      order: updatedOrder,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const createOrder = async (req, res, next) => {
   try {
     const userId = req.user._id || req.user.id;
+    const userName = req.user.name || req.body.userName || "Customer";
     const userEmail = req.user.email || "dailyclgproject@gmail.com";
     const userPhone = req.user.phone || "";
     const {
@@ -116,14 +250,20 @@ export const createOrder = async (req, res, next) => {
       minute: "2-digit",
     });
 
+    const isCod = (paymentMethod || "").toLowerCase().includes("cod") || (paymentMethod || "").toLowerCase().includes("cash");
+    const pStatus = isCod ? "Pending" : "Paid";
+
     const newOrderData = {
       user: userId,
+      userName,
       userEmail,
       userPhone,
       id: orderId,
       number: orderNum,
       date: dateStr,
       status: "Preparing",
+      paymentStatus: pStatus,
+      isConfirmed: true,
       total: total || 500,
       paymentMethod: paymentMethod || "Razorpay Online",
       address: address || "Flat 402, Green Meadows, Koramangala, Bengaluru 560034",
@@ -150,17 +290,14 @@ export const createOrder = async (req, res, next) => {
       console.warn(`[Order Warning] DB write failed: ${dbErr.message}`);
     }
 
-    // Save to persistent file storage
     insertDocument("orders", newOrderData);
 
-    // 1. Empty Cart
     try {
       await Cart.findOneAndUpdate({ user: userId }, { items: [], promo: null });
     } catch (cartErr) {
       console.warn("[Cart] Clear on order placement skipped");
     }
 
-    // 2. Create Notification
     const notif = {
       id: `n_${Date.now()}`,
       user: userId,
@@ -177,7 +314,6 @@ export const createOrder = async (req, res, next) => {
     }
     insertDocument("notifications", notif);
 
-    // 3. Send Order Confirmation Email via Nodemailer
     if (req.user && req.user.email) {
       const emailHtml = getOrderConfirmationTemplate(newOrderData);
       await sendEmail({
@@ -240,3 +376,4 @@ export const repeatOrder = async (req, res, next) => {
     next(error);
   }
 };
+

@@ -22,7 +22,7 @@ export const Route = createFileRoute("/orders/")({
 function OrdersPage() {
   const { orders } = useOrders();
   const [tab, setTab] = useState<"current" | "past">("current");
-  const current = orders.filter((o) => o.status === "Preparing" || o.status === "On the way");
+  const current = orders.filter((o) => o.status !== "Delivered" && o.status !== "Cancelled");
   const past = orders.filter((o) => o.status === "Delivered" || o.status === "Cancelled");
   const list = tab === "current" ? current : past;
 

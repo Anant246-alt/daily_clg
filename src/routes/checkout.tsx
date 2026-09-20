@@ -47,7 +47,7 @@ function CheckoutPage() {
   const cart = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { addresses, selectedAddressId, selectAddress, setLastOrder } = useOrders();
+  const { addresses, selectedAddressId, selectAddress, setLastOrder, createOrder } = useOrders();
   const [method, setMethod] = useState("razorpay");
   const [phone, setPhone] = useState(user?.phone || "+91 83560 68950");
   const [instructions, setInstructions] = useState("");
@@ -119,6 +119,20 @@ function CheckoutPage() {
               userEmail: user?.email || "dailyclgproject@gmail.com",
             });
 
+            const newOrderObj = verifyRes.order || {
+              id: verifyRes.orderId || `o_${Date.now()}`,
+              number: verifyRes.orderNumber || "#DLY-1002",
+              date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+              status: "Preparing",
+              paymentStatus: "Paid",
+              total: cart.total,
+              paymentMethod: "Razorpay Gateway",
+              address: addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows",
+              items: [...cart.items],
+              timeline: [],
+            };
+            createOrder(newOrderObj);
+
             setLastOrder({ number: verifyRes.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
             cart.clearCart();
             setShowOtpModal(false);
@@ -184,13 +198,29 @@ function CheckoutPage() {
 
     // Direct checkout ONLY for Cash on Delivery (COD)
     setLoading(true);
+    const targetAddress = addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows, Koramangala";
     const res = await placeOrder({
       items: cart.items,
       method: "Cash on Delivery",
       instructions,
       total: cart.total,
-      address: addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows, Koramangala",
+      address: targetAddress,
     });
+
+    const newOrderObj = res.order || {
+      id: res.orderId || `o_${Date.now()}`,
+      number: res.orderNumber || "#DLY-1002",
+      date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+      status: "Preparing",
+      paymentStatus: "Pending",
+      total: cart.total,
+      paymentMethod: "Cash on Delivery",
+      address: targetAddress,
+      items: [...cart.items],
+      timeline: [],
+    };
+    createOrder(newOrderObj);
+
     setLastOrder({ number: res.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
     cart.clearCart();
     setLoading(false);
@@ -226,6 +256,7 @@ function CheckoutPage() {
     }
     setOtpVerifying(true);
     const emailToUse = user?.email || "dailyclgproject@gmail.com";
+    const targetAddress = addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows";
 
     try {
       await verifyOtp(emailToUse, paymentOtp);
@@ -236,12 +267,26 @@ function CheckoutPage() {
         razorpay_signature: "verified_signature",
         items: cart.items,
         total: cart.total,
-        address: addresses.find((a) => a.id === selectedAddressId)?.line || "Flat 402, Green Meadows",
+        address: targetAddress,
         instructions,
         paymentMethod: "Razorpay Payment OTP",
         userEmail: emailToUse,
         otp: paymentOtp,
       });
+
+      const newOrderObj = verifyRes.order || {
+        id: verifyRes.orderId || `o_${Date.now()}`,
+        number: verifyRes.orderNumber || "#DLY-1002",
+        date: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+        status: "Preparing",
+        paymentStatus: "Paid",
+        total: cart.total,
+        paymentMethod: "Razorpay Payment OTP",
+        address: targetAddress,
+        items: [...cart.items],
+        timeline: [],
+      };
+      createOrder(newOrderObj);
 
       setLastOrder({ number: verifyRes.orderNumber || "#DLY-1002", eta: "25 – 35 min" });
       cart.clearCart();
