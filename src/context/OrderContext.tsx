@@ -50,25 +50,15 @@ export function OrderProvider({ children }: { children: ReactNode }) {
   );
 
   const refreshOrders = useCallback(async () => {
+    const token = typeof window !== "undefined" ? window.localStorage.getItem("daily.token") : null;
+    if (!token) {
+      setOrders([]);
+      return;
+    }
     try {
       const remoteOrders = await fetchOrders();
-      if (Array.isArray(remoteOrders) && remoteOrders.length > 0) {
-        setOrders((prev) => {
-          const orderMap = new Map<string, Order>();
-          // Remote backend orders take precedence for status updates
-          remoteOrders.forEach((ro: any) => {
-            const key = ro.id || ro.number;
-            if (key) orderMap.set(key, ro);
-          });
-          // Retain any local orders not yet reflected in backend
-          prev.forEach((lo) => {
-            const key = lo.id || lo.number;
-            if (key && !orderMap.has(key)) {
-              orderMap.set(key, lo);
-            }
-          });
-          return Array.from(orderMap.values());
-        });
+      if (Array.isArray(remoteOrders)) {
+        setOrders(remoteOrders);
       }
     } catch (err) {
       console.warn("[OrderContext] refreshOrders notice:", err);
@@ -83,18 +73,25 @@ export function OrderProvider({ children }: { children: ReactNode }) {
 
     const handleFocus = () => refreshOrders();
     const handleOrderPlaced = () => refreshOrders();
+    const handleUserLogout = () => {
+      setOrders([]);
+    };
 
     window.addEventListener("focus", handleFocus);
     window.addEventListener("storage", handleFocus);
     window.addEventListener("daily:orderPlaced", handleOrderPlaced);
+    window.addEventListener("daily:userRegistered", handleFocus);
+    window.addEventListener("daily:userLoggedOut", handleUserLogout);
 
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("storage", handleFocus);
       window.removeEventListener("daily:orderPlaced", handleOrderPlaced);
+      window.removeEventListener("daily:userRegistered", handleFocus);
+      window.removeEventListener("daily:userLoggedOut", handleUserLogout);
     };
-  }, [refreshOrders]);
+  }, [refreshOrders, setOrders]);
 
   const selectAddress = useCallback((id: string) => setSelectedAddressId(id), [setSelectedAddressId]);
 

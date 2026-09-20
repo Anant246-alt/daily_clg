@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useCallback, useEffect, type ReactNode } from "react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import type { Product } from "@/data/products";
 import { DELIVERY_FEE, GST_RATE } from "@/utils/format";
@@ -96,6 +96,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = useCallback(() => {
     setItems([]);
     setPromo(null);
+  }, [setItems, setPromo]);
+
+  useEffect(() => {
+    const handleLogout = () => {
+      setItems([]);
+      setPromo(null);
+    };
+    window.addEventListener("daily:userLoggedOut", handleLogout);
+    return () => window.removeEventListener("daily:userLoggedOut", handleLogout);
   }, [setItems, setPromo]);
 
   const value = useMemo<CartValue>(() => {

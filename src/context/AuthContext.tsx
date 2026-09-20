@@ -48,6 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async (email: string, otp: string, name?: string) => {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("daily.orders");
+        window.localStorage.removeItem("daily.cart");
+        window.localStorage.removeItem("daily.promo");
+        window.localStorage.removeItem("daily.lastOrder");
+      }
       const res = await authApi.verifyOtp(email, otp, name);
       if (res.token) {
         window.localStorage.setItem("daily.token", res.token);
@@ -73,8 +79,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(() => {
     void authApi.logout();
-    window.localStorage.removeItem("daily.token");
-    window.localStorage.removeItem("daily.user");
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem("daily.token");
+      window.localStorage.removeItem("daily.user");
+      window.localStorage.removeItem("daily.orders");
+      window.localStorage.removeItem("daily.cart");
+      window.localStorage.removeItem("daily.promo");
+      window.localStorage.removeItem("daily.lastOrder");
+      window.localStorage.removeItem("daily.address");
+      window.localStorage.removeItem("daily.addresses");
+      window.dispatchEvent(new CustomEvent("daily:userLoggedOut"));
+    }
     setUser(null);
   }, [setUser]);
 

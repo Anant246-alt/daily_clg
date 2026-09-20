@@ -52,9 +52,6 @@ export const getOrders = async (req, res, next) => {
     });
 
     let finalOrders = Array.from(combinedMap.values());
-    if (finalOrders.length === 0) {
-      finalOrders = diskOrders.length > 0 ? diskOrders : fallbackOrders;
-    }
     return res.status(200).json(finalOrders);
   } catch (error) {
     next(error);
